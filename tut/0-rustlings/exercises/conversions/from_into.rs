@@ -18,7 +18,6 @@ impl Default for Person {
     }
 }
 
-// I AM NOT DONE
 // Your task is to complete this implementation
 // in order for the line `let p = Person::from("Mark,20")` to compile
 // Please note that you'll need to parse the age component into a `usize`
@@ -32,8 +31,47 @@ impl Default for Person {
 // If something goes wrong, for instance there is no comma in the provided string or
 // parsing the age fails, then return the default of Person
 // Otherwise, return an instantiated Person onject with the results
+#[derive(PartialEq, Debug)]
+struct MyError;
+
+use std::error;
+use std::fmt;
+
+
+impl error::Error for MyError {
+    fn description(&self) -> &str {
+        "some error"
+    }
+}
+
+impl fmt::Display for MyError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.write_str("LKJHLKJHLKJ")
+    }
+}
+
+
+impl Person {
+    fn _from(s: &str) -> Result<Person, Box<dyn error::Error>> {
+        let mut splitted = s.split(",");
+
+        let name = splitted.next().ok_or(MyError)?.to_string();
+        let age = splitted.next().ok_or(MyError)?.parse::<usize>()?;
+
+        Ok(Person { name, age })
+    }
+}
+
+
+
 impl From<&str> for Person {
+
     fn from(s: &str) -> Person {
+        let p = Person::_from(&s);
+        match p {
+            Ok(p) => p,
+            Err(e) => Person::default()
+        }
     }
 }
 

@@ -1,8 +1,8 @@
 // FIXME: Make me compile! Diff budget: 1 line.
 
-// I AM NOT DONE
-
 // What traits does this struct need to derive?
+#[derive(Clone)]
+#[derive(Copy)]
 struct MyType(usize);
 
 // Do not modify this function.

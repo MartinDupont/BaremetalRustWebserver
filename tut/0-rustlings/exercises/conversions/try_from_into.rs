@@ -10,7 +10,6 @@ struct Person {
     age: usize,
 }
 
-// I AM NOT DONE
 // Your task is to complete this implementation
 // in order for the line `let p = Person::try_from("Mark,20")` to compile
 // and return an Ok result of inner type Person.
@@ -25,9 +24,18 @@ struct Person {
 // If something goes wrong, for instance there is no comma in the provided string or
 // parsing the age fails, then return Err of String
 // Otherwise, return Ok result of a Person object
+
+#[derive(Debug)]
+struct MyError;
 impl TryFrom<&str> for Person {
-    type Error = String;
+    type Error = MyError;
     fn try_from(s: &str) -> Result<Self, Self::Error> {
+        let mut splitted = s.split(",");
+
+        let name = splitted.next().ok_or(MyError)?.to_string();
+        let age = splitted.next().ok_or(MyError)?.parse::<usize>().map_err(|a| MyError)?;
+
+        Ok(Person { name, age })
     }
 }
 
