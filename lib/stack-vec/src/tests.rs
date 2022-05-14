@@ -145,10 +145,12 @@ fn push_too_far() {
     stack_vec.push(3).expect("not okay");
 }
 
+
 #[test]
 fn iterator() {
     let mut storage = [0usize; 1024];
     let mut stack_vec = StackVec::new(&mut storage);
+    println!("{:?}", stack_vec.iter());
     assert!(stack_vec.iter().next().is_none());
 
     stack_vec.push(123).expect("cap = 1024");

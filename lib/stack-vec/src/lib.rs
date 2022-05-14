@@ -1,4 +1,4 @@
-#![no_std]
+//#![no_std]
 
 #[cfg(test)]
 mod tests;
@@ -26,10 +26,9 @@ impl<'a, T: 'a> StackVec<'a, T> {
     /// store. The returned `StackVec` will be able to hold `storage.len()`
     /// values.
     pub fn new(storage: &'a mut [T]) -> StackVec<'a, T> {
-        let len = storage.len();
         StackVec {
             storage: storage,
-            len: len,
+            len: 0,
         }
     }
 
@@ -76,12 +75,12 @@ impl<'a, T: 'a> StackVec<'a, T> {
 
     /// Extracts a slice containing the entire vector.
     pub fn as_slice(&self) -> &[T] {
-        self.storage
+        &self.storage[0..self.len]
     }
 
     /// Extracts a mutable slice of the entire vector.
     pub fn as_mut_slice(&mut self) -> &mut [T] {
-        self.storage
+        &mut self.storage[0..self.len]
     }
 
     /// Returns the number of elements in the vector, also referred to as its
@@ -115,6 +114,11 @@ impl<'a, T: 'a> StackVec<'a, T> {
             Ok(())
         }
     }
+
+    pub fn iter(&'a self) -> core::slice::Iter<'a, T> {
+        self.into_iter()
+    }
+
 }
 
 impl<'a, T: Clone + 'a> StackVec<'a, T> {
@@ -125,7 +129,7 @@ impl<'a, T: Clone + 'a> StackVec<'a, T> {
             None
         } else {
             let val = self.storage[self.len - 1].clone();
-            self.len += 1;
+            self.len -= 1;
             Some(val)
         }
     }
@@ -150,23 +154,40 @@ impl <T> Index<usize> for StackVec<'_, T> {
     type Output = T;
 
     fn index(&self, n: usize) -> &Self::Output {
+        if n >= self.len {
+            panic!()
+        }
         &self.storage[n]
     }
 }
 
 impl <T> IndexMut<usize> for StackVec<'_, T> {
     fn index_mut(&mut self, index: usize) -> &mut Self::Output {
+        if index >= self.len {
+            panic!()
+        }
         &mut self.storage[index]
     }
 }
 
 
+impl <'a, T:'a> IntoIterator for StackVec<'a, T> {
+    type Item = &'a T;
+    type IntoIter = core::slice::Iter<'a, T>;
 
-impl <'a, T: 'a> Iterator for StackVec<'a, T> {
-    type Item = T;
+    fn into_iter(self) -> Self::IntoIter {
+        println!("being called");
+        self.storage[0..self.len].into_iter()
+    }
+}
 
-    fn next(&mut self) -> Option<T> {
-        unimplemented!()
+impl <'a, T:'a> IntoIterator for &'a StackVec<'a, T> {
+    type Item = &'a T;
+    type IntoIter = core::slice::Iter<'a, T>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        println!("being called");
+        self.storage[0..self.len].into_iter()
     }
 }
 
