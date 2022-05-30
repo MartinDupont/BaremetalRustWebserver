@@ -189,10 +189,10 @@ impl<T: io::Read + io::Write> Xmodem<T> {
         return if byte == read_byte {
             Ok(read_byte)
         } else if read_byte == CAN {
-            self.inner.write(&[CAN])?;
+            self.write_byte(CAN)?;
             ioerr!(ConnectionAborted, "received CAN")
         } else {
-            self.inner.write(&[CAN])?;
+            self.write_byte(CAN)?;
             ioerr!(InvalidData, expected)
         }
     }
@@ -248,7 +248,6 @@ impl<T: io::Read + io::Write> Xmodem<T> {
     pub fn read_packet(&mut self, buf: &mut [u8]) -> io::Result<usize> {
 
         if !self.started {
-            (self.progress)(Progress::Waiting);
             self.write_byte(NAK)?;
             self.started = true;
             (self.progress)(Progress::Started);
@@ -276,6 +275,9 @@ impl<T: io::Read + io::Write> Xmodem<T> {
 
         self.write_byte(ACK);
         self.packet += 1;
+
+        (self.progress)(Progress::Packet(self.packet));
+
 
         return Ok(128)
     }
@@ -322,14 +324,14 @@ impl<T: io::Read + io::Write> Xmodem<T> {
         if buf.len() < 128 && buf.len() != 0 {
             return ioerr!(UnexpectedEof, "Buffer not 128 bytes or 0")
         } else if buf.len() == 0 {
-            self.inner.write(&[EOT])?;
+            self.write_byte(EOT)?;
             self.expect_byte(NAK, "Expected NAK")?;
-            self.inner.write(&[EOT])?;
+            self.write_byte(EOT)?;
             self.expect_byte(ACK, "Expected ACK")?;
             return Ok(0)
         }
 
-        self.inner.write(&[SOH])?;
+        self.write_byte(SOH)?;
         self.inner.write(&[self.packet])?;
         self.inner.write(&[255 - self.packet])?;
         self.inner.write(buf)?;
@@ -340,6 +342,7 @@ impl<T: io::Read + io::Write> Xmodem<T> {
             return ioerr!(Interrupted, "Packet didn't send sucessfully")
         } if response == ACK {
             self.packet += 1;
+            (self.progress)(Progress::Packet(self.packet));
             return Ok(128)
         }
 
