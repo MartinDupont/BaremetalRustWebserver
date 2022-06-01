@@ -146,9 +146,9 @@ impl fmt::Write for MiniUart {
     }
 }
 
-mod uart_io {
+pub mod uart_io {
     use super::io;
-    use super::MiniUart;
+    pub use super::MiniUart;
     use volatile::prelude::*;
 
 

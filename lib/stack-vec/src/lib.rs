@@ -176,7 +176,6 @@ impl <'a, T:'a> IntoIterator for StackVec<'a, T> {
     type IntoIter = core::slice::Iter<'a, T>;
 
     fn into_iter(self) -> Self::IntoIter {
-        println!("being called");
         self.storage[0..self.len].into_iter()
     }
 }
@@ -186,7 +185,6 @@ impl <'a, T:'a> IntoIterator for &'a StackVec<'a, T> {
     type IntoIter = core::slice::Iter<'a, T>;
 
     fn into_iter(self) -> Self::IntoIter {
-        println!("being called");
         self.storage[0..self.len].into_iter()
     }
 }

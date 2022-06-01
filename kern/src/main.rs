@@ -16,10 +16,20 @@ pub mod shell;
 
 use console::kprintln;
 
+use pi::uart::uart_io;
+use shim::io::Write;
+use shim::io::Read;
 // FIXME: You need to add dependencies here to
 // test your drivers (Phase 2). Add them as needed.
 
 fn kmain() -> ! {
-    // FIXME: Start the shell.
-    unimplemented!()
+    let mut mini_uart = uart_io::MiniUart::new();
+    let mut buf = [0u8; 1];
+    loop {
+        let result = mini_uart.read(&mut buf);
+        match result {
+            Ok(x) => { mini_uart.write(&buf); }
+            Err(_) => {}
+        }
+    }
 }

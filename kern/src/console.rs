@@ -1,6 +1,9 @@
 use core::fmt;
 use pi::uart::MiniUart;
+use pi::uart::uart_io;
 use shim::io;
+use shim::io::Write;
+use shim::io::Read;
 
 use crate::mutex::Mutex;
 
@@ -18,35 +21,44 @@ impl Console {
     /// Initializes the console if it's not already initialized.
     #[inline]
     fn initialize(&mut self) {
-        unimplemented!()
+        self.inner = Some(MiniUart::new());
     }
 
     /// Returns a mutable borrow to the inner `MiniUart`, initializing it as
     /// needed.
     fn inner(&mut self) -> &mut MiniUart {
-        unimplemented!()
+        if let None = self.inner {
+            self.initialize()
+        }
+        return match &mut self.inner {
+            Some(x) => x,
+            None => panic!(),
+        }
     }
 
     /// Reads a byte from the UART device, blocking until a byte is available.
     pub fn read_byte(&mut self) -> u8 {
-        unimplemented!()
+        let inner = self.inner();
+        let mut buf = [0u8];
+        inner.read(&mut buf).unwrap();
+        buf[0]
     }
 
     /// Writes the byte `byte` to the UART device.
     pub fn write_byte(&mut self, byte: u8) {
-        unimplemented!()
+        self.inner().write(&[byte]);
     }
 }
 
 impl io::Read for Console {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
-        unimplemented!()
+        self.inner().read(buf)
     }
 }
 
 impl io::Write for Console {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        unimplemented!()
+        self.inner().write(buf)
     }
 
     fn flush(&mut self) -> io::Result<()> {
@@ -56,7 +68,7 @@ impl io::Write for Console {
 
 impl fmt::Write for Console {
     fn write_str(&mut self, s: &str) -> fmt::Result {
-        unimplemented!()
+        self.inner().write_str(s)
     }
 }
 
@@ -70,7 +82,7 @@ pub fn _print(args: fmt::Arguments) {
     {
         use core::fmt::Write;
         let mut console = CONSOLE.lock();
-        console.write_fmt(args).unwrap();
+        core::fmt::Write::write_fmt(&mut *console, args).unwrap();
     }
 
     #[cfg(test)]
@@ -81,12 +93,12 @@ pub fn _print(args: fmt::Arguments) {
 
 /// Like `println!`, but for kernel-space.
 pub macro kprintln {
-    () => (kprint!("\n")),
-    ($fmt:expr) => (kprint!(concat!($fmt, "\n"))),
-    ($fmt:expr, $($arg:tt)*) => (kprint!(concat!($fmt, "\n"), $($arg)*))
+() => (kprint!("\n")),
+($fmt:expr) => (kprint!(concat!($fmt, "\n"))),
+($fmt:expr, $($arg:tt)*) => (kprint!(concat!($fmt, "\n"), $($arg)*))
 }
 
 /// Like `print!`, but for kernel-space.
 pub macro kprint($($arg:tt)*) {
-    _print(format_args!($($arg)*))
+_print(format_args!($($arg)*))
 }
