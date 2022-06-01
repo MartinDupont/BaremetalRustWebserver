@@ -5,6 +5,9 @@ use crate::console::{kprint, kprintln, CONSOLE};
 use shim::io::Write;
 use shim::io::Read;
 
+use core::str;
+use core::fmt;
+
 /// Error type for `Command` parse failures.
 #[derive(Debug)]
 enum Error {
@@ -48,7 +51,7 @@ impl<'a> Command<'a> {
 /// returns if the `exit` command is called.
 pub fn shell(prefix: &str) -> ! {
     kprintln!("======================================================================");
-    kprintln!("                       Welcome to my OS                               ");
+    kprintln!("                           Welcome to my OS                           ");
     kprintln!("======================================================================");
     let mut arg_buf = [0u8; 1024];
     loop {
@@ -56,9 +59,26 @@ pub fn shell(prefix: &str) -> ! {
         let mut console = &mut *CONSOLE.lock();
         console.read(&mut arg_buf).unwrap();
 
+        let input_str = str::from_utf8(&arg_buf).unwrap();
 
-        let mut input_str = "abcd";
         let mut command_buf = [""; 10];
-        let thing = Command::parse(&input_str, &mut command_buf);
+        let command = Command::parse(&input_str, &mut command_buf);
+        let thing = match command {
+            Ok(x) => x,
+            Err(_) => continue
+        };
+
+        let arg1 = thing.args[1];
+
+        match arg1 {
+            "echo" => {
+                let arg2 = thing.args[2];
+                console.write(arg2.as_bytes());
+            }
+            _ => {
+                console.write("I only accept echo commands".as_bytes());
+            }
+        };
+
     }
 }
