@@ -2,6 +2,9 @@ use stack_vec::StackVec;
 
 use crate::console::{kprint, kprintln, CONSOLE};
 
+use shim::io::Write;
+use shim::io::Read;
+
 /// Error type for `Command` parse failures.
 #[derive(Debug)]
 enum Error {
@@ -37,12 +40,25 @@ impl<'a> Command<'a> {
 
     /// Returns this command's path. This is equivalent to the first argument.
     fn path(&self) -> &str {
-        unimplemented!()
+        self.args[0]
     }
 }
 
 /// Starts a shell using `prefix` as the prefix for each line. This function
 /// returns if the `exit` command is called.
 pub fn shell(prefix: &str) -> ! {
-    unimplemented!()
+    kprintln!("======================================================================");
+    kprintln!("                       Welcome to my OS                               ");
+    kprintln!("======================================================================");
+    let mut arg_buf = [0u8; 1024];
+    loop {
+        kprint!("{}", prefix);
+        let mut console = &mut *CONSOLE.lock();
+        console.read(&mut arg_buf).unwrap();
+
+
+        let mut input_str = "abcd";
+        let mut command_buf = [""; 10];
+        let thing = Command::parse(&input_str, &mut command_buf);
+    }
 }
