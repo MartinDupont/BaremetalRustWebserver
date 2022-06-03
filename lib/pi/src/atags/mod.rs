@@ -25,11 +25,10 @@ impl Iterator for Atags {
 
     // FIXME: Implement `Iterator` for `Atags`
     fn next(&mut self) -> Option<Atag> {
-        let mut ptr = self.ptr?;
-        let new = (ptr as *const raw::Atag as usize) + ptr.dwords as usize;
-        let thing = unsafe { &*(new as *const raw::Atag) };
-        self.ptr =  Some(thing);
-        Some(Atag::from(thing))
+        let ptr = self.ptr?;
+        let new_ptr = ptr.next();
+        self.ptr = new_ptr;
+        Some(Atag::from(ptr))
     }
 }
 

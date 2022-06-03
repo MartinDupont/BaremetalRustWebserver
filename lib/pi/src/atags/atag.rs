@@ -47,7 +47,17 @@ impl From<&'static raw::Atag> for Atag {
             match (atag.tag, &atag.kind) {
                 (raw::Atag::CORE, &raw::Kind { core }) => Atag::Core(core),
                 (raw::Atag::MEM, &raw::Kind { mem }) => Atag::Mem(mem),
-                (raw::Atag::CMDLINE, &raw::Kind { ref cmd }) => Atag::Cmd("cmd as str"),
+                (raw::Atag::CMDLINE, &raw::Kind { ref cmd }) => {
+                    let start = &cmd.cmd as *const u8;
+                    let mut ptr = &cmd.cmd as *const u8;
+                    while *ptr != 0 {
+                        ptr = ptr.add(1);
+                    }
+                    let c_str_len = ptr.offset_from(start) as usize;
+                    let c_str_slice = core::slice::from_raw_parts(start, c_str_len);
+                    let cmd_str = core::str::from_utf8(c_str_slice).expect("valid utf8");
+                    Atag::Cmd(cmd_str)
+                },
                 (raw::Atag::NONE, _) => Atag::None,
                 (id, _) => Atag::Unknown(id),
             }
