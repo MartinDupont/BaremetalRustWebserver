@@ -15,18 +15,27 @@ pub enum Atag {
 impl Atag {
     /// Returns `Some` if this is a `Core` ATAG. Otherwise returns `None`.
     pub fn core(self) -> Option<Core> {
-        unimplemented!()
+        match self {
+            Atag::Core(x) => Some(x),
+            _ => None
+        }
     }
 
     /// Returns `Some` if this is a `Mem` ATAG. Otherwise returns `None`.
     pub fn mem(self) -> Option<Mem> {
-        unimplemented!()
+        match self {
+            Atag::Mem(x) => Some(x),
+            _ => None
+        }
     }
 
     /// Returns `Some` with the command line string if this is a `Cmd` ATAG.
     /// Otherwise returns `None`.
     pub fn cmd(self) -> Option<&'static str> {
-        unimplemented!()
+        match self {
+            Atag::Cmd(x) => Some(x),
+            _ => None
+        }
     }
 }
 
