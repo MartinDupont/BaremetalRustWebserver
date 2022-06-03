@@ -50,35 +50,85 @@ impl<'a> Command<'a> {
 /// Starts a shell using `prefix` as the prefix for each line. This function
 /// returns if the `exit` command is called.
 pub fn shell(prefix: &str) -> ! {
+    const CMD_LEN: usize = 512;
+    const ARG_LEN: usize = 64;
     kprintln!("======================================================================");
     kprintln!("                           Welcome to my OS                           ");
     kprintln!("======================================================================");
-    let mut arg_buf = [0u8; 1024];
+    kprintln!();
     loop {
+        let mut cmd_buf = [0u8; CMD_LEN];
+        let mut arg_buf = [""; ARG_LEN];
+
+        kprintln!();
         kprint!("{}", prefix);
-        let mut console = &mut *CONSOLE.lock();
-        console.read(&mut arg_buf).unwrap();
 
-        let input_str = str::from_utf8(&arg_buf).unwrap();
-
-        let mut command_buf = [""; 10];
-        let command = Command::parse(&input_str, &mut command_buf);
-        let thing = match command {
-            Ok(x) => x,
-            Err(_) => continue
-        };
-
-        let arg1 = thing.args[1];
-
-        match arg1 {
-            "echo" => {
-                let arg2 = thing.args[2];
-                console.write(arg2.as_bytes());
+        let mut i = 0;
+        'cmd: loop {
+            if i == CMD_LEN {
+                kprintln!();
+                kprintln!("command length exceeds {}", CMD_LEN);
+                break 'cmd;
             }
-            _ => {
-                console.write("I only accept echo commands".as_bytes());
-            }
-        };
 
+            let byte = CONSOLE.lock().read_byte();
+            if byte == b'\n' || byte == b'\r' {
+                kprintln!();
+                let cmd_result = str::from_utf8(&cmd_buf[0..i]);
+                if let Ok(cmd) = cmd_result {
+                    match Command::parse(cmd, &mut arg_buf) { // enter
+                        Err(Error::Empty) => {}
+                        Err(Error::TooManyArgs) => {
+                            kprintln!("error: too many arguments");
+                        }
+                        Ok(cmd) => {
+                            process_command(cmd);
+                        }
+                    }
+                    break 'cmd;
+                } else {
+                    kprintln!("Could not parse input bytes into string");
+                    kprint!("\u{7}");
+                    kprintln!("");
+                    cmd_buf = [0u8; CMD_LEN];
+                    arg_buf = [""; ARG_LEN];
+                }
+            } else if byte == 8 || byte == 127 { // backspace
+                if i > 0 {
+                    kprint!("\u{8} \u{8}");
+                    i -= 1
+                }
+            } else {
+                cmd_buf[i] = byte;
+                CONSOLE.lock().write_byte(byte);
+                i += 1;
+            }
+        }
     }
+}
+
+
+fn process_command(cmd: Command) -> Option<()> {
+    let arg1 = cmd.args.get(1)?;
+
+    match *arg1 {
+        "echo" => {
+            kprint!("\n");
+            let mut count = 0;
+            for arg in cmd.args {
+                if count > 1 {
+                    kprint!("{}", arg);
+                }
+                count += 1
+            }
+            kprint!("\n");
+        }
+        "" => {
+            kprintln!();
+        }
+        _ => {
+            kprintln!("Unknown command: {}", arg1);
+        }
+    };
+    return Some(());
 }
