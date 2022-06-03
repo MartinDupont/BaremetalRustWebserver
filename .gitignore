@@ -2,3 +2,7 @@ target/
 build/
 TAGS
 .dep
+*Cargo.lock
+.idea
+ttywrite/output
+ttywrite/input
