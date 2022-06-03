@@ -124,12 +124,14 @@ impl Gpio<Uninitialized> {
 impl Gpio<Output> {
     /// Sets (turns on) the pin.
     pub fn set(&mut self) {
-        unimplemented!()
+        let register = &mut self.registers.SET[self.pin as usize / 32];
+        register.write(1 << (self.pin % 32));
     }
 
     /// Clears (turns off) the pin.
     pub fn clear(&mut self) {
-        unimplemented!()
+        let register = &mut self.registers.CLR[self.pin as usize / 32];
+        register.write(1 << (self.pin % 32));
     }
 }
 
@@ -137,6 +139,7 @@ impl Gpio<Input> {
     /// Reads the pin's value. Returns `true` if the level is high and `false`
     /// if the level is low.
     pub fn level(&mut self) -> bool {
-        unimplemented!()
+        let register = &mut self.registers.LEV[self.pin as usize / 32];
+        (register.read() & (1 << (self.pin % 32))) != 0
     }
 }
