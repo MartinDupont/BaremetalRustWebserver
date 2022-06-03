@@ -27,18 +27,30 @@ enum LsrStatus {
 #[repr(C)]
 #[allow(non_snake_case)]
 struct Registers {
-    AUX_MU_IO_REG: Volatile<u32>,
-    AUX_MU_IER_REG: Volatile<u32>,
-    AUX_MU_IIR_REG: Volatile<u32>,
-    AUX_MU_LCR_REG: Volatile<u32>,
-    AUX_MU_MCR_REG: Volatile<u32>,
-    AUX_MU_LSR_REG: ReadVolatile<u32>,
-    AUX_MU_MSR_REG: ReadVolatile<u32>,
-    AUX_MU_SCRATCH: Volatile<u32>,
-    AUX_MU_CNTL_REG: Volatile<u32>,
-    AUX_MU_STAT_REG: ReadVolatile<u32>,
-    AUX_MU_BAUD_REG: Volatile<u32>,
+    // FIXME: Declare the "MU" registers from page 8.
+    AUX_MU_IO_REG: Volatile<u8>,
+    __r1: [Reserved<u8>;3],
+    AUX_MU_IER_REG: Reserved<u8>,
+    __r2: [Reserved<u8>;3],
+    AUX_MU_IIR_REG: Reserved<u8>,
+    __r3: [Reserved<u8>;3],
+    AUX_MU_LCR_REG: Volatile<u8>,
+    __r4: [Reserved<u8>;3],
+    AUX_MU_MCR_REG: Volatile<u8>,
+    __r5: [Reserved<u8>;3],
+    AUX_MU_LSR_REG: ReadVolatile<u8>,
+    __r6: [Reserved<u8>;3],
+    AUX_MU_MSR_REG: Volatile<u8>,
+    __r7: [Reserved<u8>;3],
+    AUX_MU_SCRATCH: Reserved<u8>,
+    __r8: [Reserved<u8>;3],
+    AUX_MU_CNTL_REG: Volatile<u8>,
+    __r9: [Reserved<u8>;3],
+    AUX_MU_STAT_REG: Reserved<u32>,
+    AUX_MU_BAUD_REG: Volatile<u16>,
 }
+
+const_assert_size!(Registers, 0x7E21506C - 0x7E215040);
 
 /// The Raspberry Pi's "mini UART".
 pub struct MiniUart {
@@ -61,12 +73,19 @@ impl MiniUart {
             &mut *(MU_REG_BASE as *mut Registers)
         };
 
-        registers.AUX_MU_LCR_REG.write(0b100000); // set the baud rate register as writeable??
-        registers.AUX_MU_BAUD_REG.write(0x10E); // set the baud rate to 115200
-        registers.AUX_MU_LCR_REG.write(0b000011); // set the data size to 8 bits
+        // FIXME: Implement remaining mini UART initialization.
+        // set data length to 8
+        registers.AUX_MU_LCR_REG.or_mask(0b11);
+        // set Baud rate, which is 1.5*1000^3 / 8 / (1626 + 1) =~= 115242
+        // registers.AUX_MU_BAUD_REG.write(1626);
+        registers.AUX_MU_BAUD_REG.write(270);
 
-        let pin_14 = Gpio::new(14).into_alt(Function::Alt5);
-        let pin_15 = Gpio::new(15).into_alt(Function::Alt5);
+        // setting up GPIO pins
+        Gpio::new(14).into_alt(Function::Alt5);
+        Gpio::new(15).into_alt(Function::Alt5);
+
+        // enable UART transmitter and receiver
+        registers.AUX_MU_CNTL_REG.or_mask(0b11);
 
         MiniUart {
             registers,
@@ -83,7 +102,7 @@ impl MiniUart {
     /// in the output FIFO.
     pub fn write_byte(&mut self, byte: u8) {
         loop {
-            let can_write = self.registers.AUX_MU_LSR_REG.has_mask(LsrStatus::TxAvailable as u32);
+            let can_write = self.registers.AUX_MU_LSR_REG.has_mask(LsrStatus::TxAvailable as u8);
             if can_write {
                 self.registers.AUX_MU_IO_REG.write(byte.into());
                 break;
@@ -95,7 +114,7 @@ impl MiniUart {
     /// method returns `true`, a subsequent call to `read_byte` is guaranteed to
     /// return immediately. This method does not block.
     pub fn has_byte(&self) -> bool {
-        self.registers.AUX_MU_LSR_REG.has_mask(LsrStatus::DataReady as u32)
+        self.registers.AUX_MU_LSR_REG.has_mask(LsrStatus::DataReady as u8)
     }
 
     /// Blocks until there is a byte ready to read. If a read timeout is set,
