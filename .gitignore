@@ -4,5 +4,5 @@ TAGS
 .dep
 *Cargo.lock
 .idea
-ttywrite/output
-ttywrite/input
+*/ttywrite/output
+*/ttywrite/input
