@@ -4,36 +4,32 @@
 #![feature(asm)]
 #![feature(global_asm)]
 #![feature(optin_builtin_traits)]
-#![feature(raw_vec_internals)]
 #![cfg_attr(not(test), no_std)]
 #![cfg_attr(not(test), no_main)]
 
 #[cfg(not(test))]
 mod init;
 
-extern crate alloc;
-
-pub mod allocator;
 pub mod console;
-pub mod fs;
 pub mod mutex;
 pub mod shell;
 
 use console::kprintln;
 
-use allocator::Allocator;
-use fs::FileSystem;
-
-#[cfg_attr(not(test), global_allocator)]
-pub static ALLOCATOR: Allocator = Allocator::uninitialized();
-pub static FILESYSTEM: FileSystem = FileSystem::uninitialized();
+use pi::uart::uart_io;
+use shim::io::Write;
+use shim::io::Read;
+// FIXME: You need to add dependencies here to
+// test your drivers (Phase 2). Add them as needed.
 
 fn kmain() -> ! {
-    unsafe {
-        ALLOCATOR.initialize();
-        FILESYSTEM.initialize();
+    let mut mini_uart = uart_io::MiniUart::new();
+    let mut buf = [0u8; 1];
+    loop {
+        let result = mini_uart.read(&mut buf);
+        match result {
+            Ok(x) => { mini_uart.write(&buf); }
+            Err(_) => {}
+        }
     }
-
-    kprintln!("Welcome to cs3210!");
-    shell::shell("> ");
 }

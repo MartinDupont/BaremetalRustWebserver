@@ -100,7 +100,9 @@ impl Gpio<Uninitialized> {
     /// Enables the alternative function `function` for `self`. Consumes self
     /// and returns a `Gpio` structure in the `Alt` state.
     pub fn into_alt(self, function: Function) -> Gpio<Alt> {
-        unimplemented!()
+        let register  = &mut self.registers.FSEL[self.pin as usize / 10];
+        register.write(register.read() | ((function as u32) << (3 * (self.pin % 10))));
+        self.transition()
     }
 
     /// Sets this pin to be an _output_ pin. Consumes self and returns a `Gpio`

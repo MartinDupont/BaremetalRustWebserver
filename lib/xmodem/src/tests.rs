@@ -192,7 +192,7 @@ fn test_raw_transmission() {
 
 #[test]
 fn test_small_packet_eof_error() {
-    let mut xmodem = Xmodem::new(Cursor::new(vec![NAK, NAK, NAK]));
+    let mut xmodem = Xmodem::new(Cursor::new(vec![SOH, 1, 255]));
 
     let mut buffer = [1, 2, 3];
     let e = xmodem.read_packet(&mut buffer[..]).expect_err("read EOF");
@@ -227,3 +227,117 @@ fn test_eot() {
 
     assert_eq!(&buffer[..], &[NAK, EOT, NAK, EOT, ACK]);
 }
+
+#[test]
+fn test_transmit_sync() {
+    let mut buffer = vec![0; 128 + 10];
+    buffer[0] = NAK;
+    buffer[133] = ACK;
+    buffer[135] = NAK;
+    buffer[137] = ACK;
+
+    let mut packet = [0u8; 128];
+    (0..128usize).into_iter().enumerate().for_each(|(i, b)| packet[i] = b as u8);
+
+
+    let mut expected = vec![0; 128 + 10];
+    expected[0] = NAK; // receiver wants first packet
+    expected[1] = SOH;
+    expected[2] = 1;
+    expected[3] = 254;
+    expected[132] = get_checksum(&packet);
+    expected[133] = ACK; // receiver acknowledges receipt of first packet
+    expected[134] = EOT; // sender tries to finish up
+    expected[135] = NAK;
+    expected[136] = EOT;
+    expected[137] = ACK;
+
+    (0..128usize).into_iter().enumerate().for_each(|(i, b)| expected[i + 4] = b as u8);
+
+    let mut xmodem = Xmodem::new(Cursor::new(buffer.as_mut_slice()));
+
+    xmodem.write_packet(&packet)
+        .expect("write nonempty");
+
+    xmodem.write_packet(&[])
+        .expect("finish up");
+
+    assert_eq!(&buffer[..], &expected[..]);
+}
+
+
+#[test]
+fn test_receive_sync() {
+
+    let mut packet = [0u8; 128];
+    (0..128usize).into_iter().enumerate().for_each(|(i, b)| packet[i] = b as u8);
+
+    let mut result = [0u8; 128];
+
+
+    let mut buffer = vec![0; 128 + 10];
+    buffer[0] = NAK; // receiver wants first packet
+    buffer[1] = SOH;
+    buffer[2] = 1;
+    buffer[3] = 254;
+    buffer[132] = get_checksum(&packet);
+    buffer[133] = ACK; // receiver acknowledges receipt of first packet
+    buffer[134] = EOT; // sender tries to finish up
+    buffer[135] = NAK;
+    buffer[136] = EOT;
+    buffer[137] = EOT;
+
+    (0..128usize).into_iter().enumerate().for_each(|(i, b)| buffer[i + 4] = b as u8);
+
+    Xmodem::new(Cursor::new(buffer.as_mut_slice()))
+        .read_packet(&mut result[..])
+        .expect("all goes well");
+
+    assert_eq!(&result[..], &packet[..]);
+}
+
+
+
+#[test]
+fn test_raw_transmission_sync() {
+    let mut input = [0u8; 256];
+    (0..256usize).into_iter().enumerate().for_each(|(i, b)| input[i] = b as u8);
+
+    let mut buffer = vec![0; 256 + 15];
+    buffer[0] = NAK; // receiver wants first packet
+    //buffer[1] = SOH;
+    //buffer[2] = 1;
+    //buffer[3] = 255;
+    //buffer[132] = get_checksum(&packet[0..128]);
+    buffer[133] = ACK; // receiver acknowledges receipt of first packet
+    //buffer[134] = SOH; // sender starts sending second packet
+    //buffer[135] = 2;
+    //buffer[136] = 254;
+
+    //buffer[265] = get_checksum(&packet[128..256]);
+    buffer[266] = ACK; // receiver acknowledges receipt of second packet
+    //buffer[267] = EOT; // sender tries to finish up
+    buffer[268] = NAK;
+    //buffer[269] = EOT;
+    buffer[270] = ACK;
+
+    let mut cursor = Cursor::new(buffer);
+
+    Xmodem::transmit(&input[..], &mut cursor).expect("transmit okay");
+
+    let result = cursor.into_inner();
+
+    // check packet 1
+    assert_eq!(&result[0..4], &[NAK, SOH, 1, 255 - 1]);
+    assert_eq!(&result[4..(4 + 128)], &input[..128]);
+    assert_eq!(result[132], input[..128].iter().fold(0, |a: u8, b| a.wrapping_add(*b)));
+
+    // check packet 2
+    assert_eq!(&result[134..137], &[SOH, 2, 255 - 2]);
+    assert_eq!(&result[137..(137 + 128)], &input[128..]);
+    assert_eq!(result[265], input[128..].iter().fold(0, |a: u8, b| a.wrapping_add(*b)));
+
+    // check EOT
+    assert_eq!(&result[266..], &[ACK, EOT,NAK, EOT, ACK]);
+}
+

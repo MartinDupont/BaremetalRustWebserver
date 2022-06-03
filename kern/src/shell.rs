@@ -12,6 +12,12 @@ use crate::console::{kprint, kprintln, CONSOLE};
 use crate::ALLOCATOR;
 use crate::FILESYSTEM;
 
+use shim::io::Write;
+use shim::io::Read;
+
+use core::str;
+use core::fmt;
+
 /// Error type for `Command` parse failures.
 #[derive(Debug)]
 enum Error {
@@ -47,12 +53,92 @@ impl<'a> Command<'a> {
 
     /// Returns this command's path. This is equivalent to the first argument.
     fn path(&self) -> &str {
-        unimplemented!()
+        self.args[0]
     }
 }
 
 /// Starts a shell using `prefix` as the prefix for each line. This function
 /// never returns.
 pub fn shell(prefix: &str) -> ! {
-    unimplemented!()
+    const CMD_LEN: usize = 512;
+    const ARG_LEN: usize = 64;
+    kprintln!("======================================================================");
+    kprintln!("                           Welcome to my OS                           ");
+    kprintln!("======================================================================");
+    kprintln!();
+    loop {
+        let mut cmd_buf = [0u8; CMD_LEN];
+        let mut arg_buf = [""; ARG_LEN];
+
+        kprintln!();
+        kprint!("{}", prefix);
+
+        let mut i = 0;
+        'cmd: loop {
+            if i == CMD_LEN {
+                kprintln!();
+                kprintln!("command length exceeds {}", CMD_LEN);
+                break 'cmd;
+            }
+
+            let byte = CONSOLE.lock().read_byte();
+            if byte == b'\n' || byte == b'\r' {
+                kprintln!();
+                let cmd_result = str::from_utf8(&cmd_buf[0..i]);
+                if let Ok(cmd) = cmd_result {
+                    match Command::parse(cmd, &mut arg_buf) { // enter
+                        Err(Error::Empty) => {}
+                        Err(Error::TooManyArgs) => {
+                            kprintln!("error: too many arguments");
+                        }
+                        Ok(cmd) => {
+                            process_command(cmd);
+                        }
+                    }
+                    break 'cmd;
+                } else {
+                    kprintln!("Could not parse input bytes into string");
+                    kprint!("\u{7}");
+                    kprintln!("");
+                    cmd_buf = [0u8; CMD_LEN];
+                    arg_buf = [""; ARG_LEN];
+                }
+            } else if byte == 8 || byte == 127 { // backspace
+                if i > 0 {
+                    kprint!("\u{8} \u{8}");
+                    i -= 1
+                }
+            } else {
+                cmd_buf[i] = byte;
+                CONSOLE.lock().write_byte(byte);
+                i += 1;
+            }
+        }
+    }
+}
+
+
+fn process_command(cmd: Command) -> Option<()> {
+    let arg1 = cmd.args.get(1)?;
+
+    match *arg1 {
+        "echo" => {
+            kprint!("\n");
+            let mut count = 0;
+            for arg in cmd.args {
+                if count > 1 {
+                    kprint!("{}", arg);
+                }
+                count += 1
+            }
+            kprint!("\n");
+        }
+        "" => {
+            kprintln!();
+        }
+        _ => {
+            kprintln!("Unknown command: {}", arg1);
+        }
+    };
+    return Some(());
 }
