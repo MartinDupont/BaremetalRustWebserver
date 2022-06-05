@@ -4,7 +4,7 @@ target = "aarch64-unknown-none"
 [target.aarch64-unknown-none]
 runner = "./qemu.sh"
 rustflags = [
-    "-C", "target-cpu=cortex-a53",
+    "-C", "target-cpu=cortex-a72",
     "-C", "link-arg=--script=.cargo/layout.ld",
     "-C", "link-arg=--no-dynamic-linker",
 ]

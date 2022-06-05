@@ -24,12 +24,8 @@ use shim::io::Read;
 
 fn kmain() -> ! {
     let mut mini_uart = uart_io::MiniUart::new();
-    let mut buf = [0u8; 1];
+    let mut buf = [b'a'; 1];
     loop {
-        let result = mini_uart.read(&mut buf);
-        match result {
-            Ok(x) => { mini_uart.write(&buf); }
-            Err(_) => {}
-        }
+        mini_uart.write(&buf);
     }
 }
