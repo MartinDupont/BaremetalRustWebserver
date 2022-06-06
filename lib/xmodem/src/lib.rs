@@ -27,6 +27,8 @@ pub struct Xmodem<R> {
     progress: ProgressFn
 }
 
+const PACKET_SIZE: usize = 128;
+
 impl Xmodem<()> {
     /// Transmits `data` to the receiver `to` using the XMODEM protocol. If the
     /// length of the total data yielded by `data` is not a multiple of 128
@@ -82,7 +84,7 @@ impl Xmodem<()> {
     /// `into`. Returns the number of bytes read from `from`, a multiple of 128.
     #[inline]
     pub fn receive<R, W>(from: R, into: W) -> io::Result<usize>
-       where R: io::Read + io::Write, W: io::Write
+        where R: io::Read + io::Write, W: io::Write
     {
         Xmodem::receive_with_progress(from, into, progress::noop)
     }
@@ -93,7 +95,7 @@ impl Xmodem<()> {
     /// The function `f` is used as a callback to indicate progress throughout
     /// the reception. See the [`Progress`] enum for more information.
     pub fn receive_with_progress<R, W>(from: R, mut into: W, f: ProgressFn) -> io::Result<usize>
-       where R: io::Read + io::Write, W: io::Write
+        where R: io::Read + io::Write, W: io::Write
     {
         let mut receiver = Xmodem::new_with_progress(from, f);
         let mut packet = [0u8; 128];
@@ -246,7 +248,9 @@ impl<T: io::Read + io::Write> Xmodem<T> {
     ///
     /// An error of kind `UnexpectedEof` is returned if `buf.len() < 128`.
     pub fn read_packet(&mut self, buf: &mut [u8]) -> io::Result<usize> {
-
+        if buf.len() < PACKET_SIZE {
+            return ioerr!(UnexpectedEof, "buffer size is too small");
+        }
         if !self.started {
             self.write_byte(NAK)?;
             self.started = true;
