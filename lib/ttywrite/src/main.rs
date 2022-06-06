@@ -57,8 +57,12 @@ fn main() {
     let opt = Opt::from_args();
     let mut port = serial::open(&opt.tty_path).expect("path points to invalid TTY");
 
-    //port.set_baud_rate(opt.baud_rate);
-    //port.set_timeout(opt.timeout);
+    let mut tty_settings = port.read_settings().unwrap();
+    tty_settings.set_baud_rate(opt.baud_rate).expect("failed to set baud rate");
+    tty_settings.set_char_size(opt.char_width);
+    tty_settings.set_flow_control(opt.flow_control);
+    tty_settings.set_stop_bits(opt.stop_bits);
+    port.write_settings(&tty_settings).expect("failed to write tty settings");
 
 
     let mut buffer = String::new();
@@ -76,7 +80,5 @@ fn main() {
     } else {
         Xmodem::transmit(bytes, port);
     }
-
-    // FIXME: Implement the `ttywrite` utility.
 }
 
