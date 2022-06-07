@@ -74,7 +74,7 @@ impl LocalAlloc for Allocator {
     unsafe fn alloc(&mut self, layout: Layout) -> *mut u8 {
         let mut bin_number = get_bin_for_size(layout.size());
         if bin_number.is_err() {
-            core::ptr::null_mut()
+            return core::ptr::null_mut()
         }
         let n = bin_number.unwrap();
 
@@ -128,4 +128,18 @@ impl LocalAlloc for Allocator {
     }
 }
 
-// FIXME: Implement `Debug` for `Allocator`.
+use core::fmt::Debug;
+
+impl Debug for Allocator {
+    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+        write!(
+            f,
+            "Allocator {{ start: {}, end: {} }}\n",
+            self.start, self.end
+        )?;
+        for (i, bin) in self.bins.iter().enumerate() {
+            write!(f, "Bin {} [2^{}]: {:?}", i, BINS_START_K + i, bin)?;
+        }
+        Ok(())
+    }
+}
