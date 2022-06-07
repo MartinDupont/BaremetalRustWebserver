@@ -4,7 +4,9 @@
 #![feature(decl_macro)]
 #![feature(never_type)]
 #![no_std]
+#![feature(ptr_offset_from)]
 
+pub mod atags;
 pub mod common;
 pub mod gpio;
 pub mod timer;

@@ -19,9 +19,15 @@ use console::kprintln;
 use pi::uart::uart_io;
 use shim::io::Write;
 use shim::io::Read;
-// FIXME: You need to add dependencies here to
-// test your drivers (Phase 2). Add them as needed.
+
+#[cfg_attr(not(test), global_allocator)]
+pub static ALLOCATOR: Allocator = Allocator::uninitialized();
+pub static FILESYSTEM: FileSystem = FileSystem::uninitialized();
 
 fn kmain() -> ! {
-    shell::shell("> ")
+    unsafe {
+        ALLOCATOR.initialize();
+        FILESYSTEM.initialize();
+    }
+    shell::shell("> ");
 }
