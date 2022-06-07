@@ -6,6 +6,7 @@
 #![feature(optin_builtin_traits)]
 #![cfg_attr(not(test), no_std)]
 #![cfg_attr(not(test), no_main)]
+#![feature(raw_vec_internals)]
 
 #[cfg(not(test))]
 mod init;

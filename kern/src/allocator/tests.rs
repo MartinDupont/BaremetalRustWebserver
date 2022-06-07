@@ -70,6 +70,24 @@ mod align_util {
     }
 }
 
+
+mod allocator_utils {
+    use crate::allocator::bin::{get_bin_for_size, BINS_LEN};
+
+    #[test]
+    fn test_bin_assignments() {
+        assert_eq!(get_bin_for_size(1), Ok(0));
+        assert_eq!(get_bin_for_size(1 << 1), Ok(0));
+        assert_eq!(get_bin_for_size(1 << 2), Ok(0));
+        assert_eq!(get_bin_for_size(1 << 3), Ok(0));
+        assert_eq!(get_bin_for_size(1 << 4), Ok(1));
+        assert_eq!(get_bin_for_size(1 << 5), Ok(2));
+        assert_eq!(get_bin_for_size(1 << 32), Ok(BINS_LEN - 1));
+        assert_eq!(get_bin_for_size(1 << 33), Err(()));
+    }
+
+}
+
 mod allocator {
     extern crate alloc;
     use alloc::raw_vec::RawVec;

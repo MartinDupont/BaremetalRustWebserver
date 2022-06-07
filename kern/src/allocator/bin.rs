@@ -11,20 +11,42 @@ use crate::allocator::LocalAlloc;
 ///   bin 1 (2^4 bytes)    : handles allocations in (2^3, 2^4]
 ///   ...
 ///   bin 29 (2^22 bytes): handles allocations in (2^31, 2^32]
-///   
+///
 ///   map_to_bin(size) -> k
-///   
+///
+
+const BINS_START_K: usize = 3;
+pub const BINS_LEN: usize = 30;
 
 pub struct Allocator {
-    // FIXME: Add the necessary fields.
+    start: usize,
+    end: usize,
+    bins: [LinkedList; BINS_LEN],
 }
 
 impl Allocator {
     /// Creates a new bin allocator that will allocate memory from the region
     /// starting at address `start` and ending at address `end`.
     pub fn new(start: usize, end: usize) -> Allocator {
-        unimplemented!("bin allocator")
+        Self {
+            bins: [LinkedList::new(); BINS_LEN],
+            start,
+            end,
+        }
     }
+}
+
+const fn bin_index_size(index: usize) -> usize {
+    1 << (BINS_START_K + index)
+}
+
+pub fn get_bin_for_size(size: usize) -> Result<usize,()> {
+    for i in 0..BINS_LEN {
+        if size <= bin_index_size(i){
+            return Ok(i);
+        }
+    }
+    return Err(())
 }
 
 impl LocalAlloc for Allocator {
@@ -50,7 +72,7 @@ impl LocalAlloc for Allocator {
     /// or `layout` does not meet this allocator's
     /// size or alignment constraints.
     unsafe fn alloc(&mut self, layout: Layout) -> *mut u8 {
-        unimplemented!("bin allocator")
+        unimplemented!()
     }
 
     /// Deallocates the memory referenced by `ptr`.
