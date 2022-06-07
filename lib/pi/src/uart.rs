@@ -8,8 +8,9 @@ use volatile::prelude::*;
 use volatile::{Volatile, ReadVolatile, Reserved};
 
 use crate::timer;
-use crate::common::IO_BASE;
+use crate::common::{IO_BASE, CLOCK_HZ};
 use crate::gpio::{Gpio, Function};
+use core::convert::TryInto;
 
 /// The base address for the `MU` registers.
 const MU_REG_BASE: usize = IO_BASE + 0x215040;
@@ -29,23 +30,23 @@ enum LsrStatus {
 struct Registers {
     // FIXME: Declare the "MU" registers from page 8.
     AUX_MU_IO_REG: Volatile<u8>,
-    __r1: [Reserved<u8>;3],
+    __r1: [Reserved<u8>; 3],
     AUX_MU_IER_REG: Reserved<u8>,
-    __r2: [Reserved<u8>;3],
+    __r2: [Reserved<u8>; 3],
     AUX_MU_IIR_REG: Reserved<u8>,
-    __r3: [Reserved<u8>;3],
+    __r3: [Reserved<u8>; 3],
     AUX_MU_LCR_REG: Volatile<u8>,
-    __r4: [Reserved<u8>;3],
+    __r4: [Reserved<u8>; 3],
     AUX_MU_MCR_REG: Volatile<u8>,
-    __r5: [Reserved<u8>;3],
+    __r5: [Reserved<u8>; 3],
     AUX_MU_LSR_REG: ReadVolatile<u8>,
-    __r6: [Reserved<u8>;3],
+    __r6: [Reserved<u8>; 3],
     AUX_MU_MSR_REG: Volatile<u8>,
-    __r7: [Reserved<u8>;3],
+    __r7: [Reserved<u8>; 3],
     AUX_MU_SCRATCH: Reserved<u8>,
-    __r8: [Reserved<u8>;3],
+    __r8: [Reserved<u8>; 3],
     AUX_MU_CNTL_REG: Volatile<u8>,
-    __r9: [Reserved<u8>;3],
+    __r9: [Reserved<u8>; 3],
     AUX_MU_STAT_REG: Reserved<u32>,
     AUX_MU_BAUD_REG: Volatile<u16>,
 }
@@ -56,6 +57,10 @@ const_assert_size!(Registers, 0x7E21506C - 0x7E215040);
 pub struct MiniUart {
     registers: &'static mut Registers,
     timeout: Option<Duration>,
+}
+
+fn calculate_baud_multiplier(baud: u64) -> u16 {
+    ((CLOCK_HZ / (baud * 8)) - 1).try_into().unwrap()
 }
 
 impl MiniUart {
@@ -76,9 +81,7 @@ impl MiniUart {
         // FIXME: Implement remaining mini UART initialization.
         // set data length to 8
         registers.AUX_MU_LCR_REG.or_mask(0b11);
-        // set Baud rate, which is 1.5*1000^3 / 8 / (1626 + 1) =~= 115242
-        // registers.AUX_MU_BAUD_REG.write(1626);
-        registers.AUX_MU_BAUD_REG.write(270);
+        registers.AUX_MU_BAUD_REG.write(calculate_baud_multiplier(921600));
 
         // setting up GPIO pins
         Gpio::new(14).into_alt(Function::Alt5);
@@ -187,8 +190,8 @@ pub mod uart_io {
     impl io::Read for MiniUart {
         fn read(&mut self, buf: &mut [u8]) -> Result<usize, io::Error> {
             let mut count = 0;
-            for i in 0 .. buf.len() {
-                self.wait_for_byte().map_err(|_|{ io::Error::new(io::ErrorKind::TimedOut, "timed out")} )?;
+            for i in 0..buf.len() {
+                self.wait_for_byte().map_err(|_| { io::Error::new(io::ErrorKind::TimedOut, "timed out") })?;
                 buf[i] = self.read_byte();
                 count += 1
             }

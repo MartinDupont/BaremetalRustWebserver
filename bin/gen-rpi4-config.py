@@ -9,7 +9,7 @@ READELF = os.path.join(ROOT, "aarch64-readelf")
 CONFIG = """\
 arm_64bit=1
 kernel_address=0x%x
-core_freq_min=250
+core_freq_min=500
 """
 
 assert(len(sys.argv) == 2)
