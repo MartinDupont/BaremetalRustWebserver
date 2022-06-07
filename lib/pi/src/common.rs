@@ -1,14 +1,16 @@
 /// The address where I/O peripherals are mapped to.
 pub const IO_BASE: usize   = 0xFE00_0000;
 pub const CLOCK_HZ: u64 = 500 * 1000 * 1000;
+// TODO: IO_BASE_END not checked
 pub const IO_BASE_END: usize = 0x40000000;
 
 /// The base address of the `GPIO` registers
 pub const GPIO_BASE: usize = IO_BASE + 0x200000;
 
-/// The number of cores in Rpi3
+/// The number of cores in Rpi4
 pub const NCORES: usize = 4;
 
+// TODO: Not checked
 /// The base of physical addresses that each core is spinning on
 pub const SPINNING_BASE: *mut usize = 0xd8 as *mut usize;
 
