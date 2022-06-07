@@ -52,6 +52,7 @@ impl<'a> Command<'a> {
 pub fn shell(prefix: &str) -> ! {
     const CMD_LEN: usize = 512;
     const ARG_LEN: usize = 64;
+    kprintln!();
     kprintln!("======================================================================");
     kprintln!("                           Welcome to my OS                           ");
     kprintln!("======================================================================");
@@ -60,7 +61,6 @@ pub fn shell(prefix: &str) -> ! {
         let mut cmd_buf = [0u8; CMD_LEN];
         let mut arg_buf = [""; ARG_LEN];
 
-        kprintln!();
         kprint!("{}", prefix);
 
         let mut i = 0;
@@ -73,7 +73,7 @@ pub fn shell(prefix: &str) -> ! {
 
             let byte = CONSOLE.lock().read_byte();
             if byte == b'\n' || byte == b'\r' {
-                kprintln!();
+                kprint!("\n");
                 let cmd_result = str::from_utf8(&cmd_buf[0..i]);
                 if let Ok(cmd) = cmd_result {
                     match Command::parse(cmd, &mut arg_buf) { // enter
@@ -109,15 +109,13 @@ pub fn shell(prefix: &str) -> ! {
 
 
 fn process_command(cmd: Command) -> Option<()> {
-    let arg1 = cmd.args.get(1)?;
-
-    match *arg1 {
+    let arg1 = cmd.path();
+    match arg1 {
         "echo" => {
-            kprint!("\n");
             let mut count = 0;
             for arg in cmd.args {
-                if count > 1 {
-                    kprint!("{}", arg);
+                if count > 0 {
+                    kprint!("{} ", arg);
                 }
                 count += 1
             }

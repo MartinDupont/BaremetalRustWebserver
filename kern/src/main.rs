@@ -23,13 +23,5 @@ use shim::io::Read;
 // test your drivers (Phase 2). Add them as needed.
 
 fn kmain() -> ! {
-    let mut mini_uart = uart_io::MiniUart::new();
-    let mut buf = [0u8; 1];
-    loop {
-        let result = mini_uart.read(&mut buf);
-        match result {
-            Ok(x) => { mini_uart.write(&buf); }
-            Err(_) => {}
-        }
-    }
+    shell::shell("> ")
 }

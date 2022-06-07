@@ -158,13 +158,14 @@ impl MiniUart {
 // FIXME: Implement `fmt::Write` for `MiniUart`. A b'\r' byte should be written
 // before writing any b'\n' byte.
 impl fmt::Write for MiniUart {
-    fn write_str(&mut self, s: &str) -> Result<(), fmt::Error> {
-        self.write_byte(b'\r');
-        for char in s.bytes() {
-            self.write_byte(char);
+    fn write_str(&mut self, s: &str) -> fmt::Result {
+        for byte in s.as_bytes().iter() {
+            if *byte == b'\n' {
+                self.write_byte(b'\r');
+            }
+            self.write_byte(*byte);
         }
-        self.write_byte(b'\n');
-        return Ok(());
+        Ok(())
     }
 }
 
