@@ -13,13 +13,21 @@ mod init;
 pub mod console;
 pub mod mutex;
 pub mod shell;
+pub mod allocator;
 
 use console::kprintln;
 
 use pi::uart::uart_io;
 use shim::io::Write;
 use shim::io::Read;
+use allocator::Allocator;
+
+#[cfg_attr(not(test), global_allocator)]
+pub static ALLOCATOR: Allocator = Allocator::uninitialized();
 
 fn kmain() -> ! {
+    unsafe {
+        ALLOCATOR.initialize();
+    }
     shell::shell("> ");
 }
