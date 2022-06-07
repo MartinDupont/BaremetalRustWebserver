@@ -40,13 +40,13 @@ const fn bin_index_size(index: usize) -> usize {
     1 << (BINS_START_K + index)
 }
 
-pub fn get_bin_for_size(size: usize) -> Result<usize,()> {
+pub fn get_bin_for_size(size: usize) -> Result<usize, ()> {
     for i in 0..BINS_LEN {
-        if size <= bin_index_size(i){
+        if size <= bin_index_size(i) {
             return Ok(i);
         }
     }
-    return Err(())
+    return Err(());
 }
 
 impl LocalAlloc for Allocator {
@@ -72,7 +72,42 @@ impl LocalAlloc for Allocator {
     /// or `layout` does not meet this allocator's
     /// size or alignment constraints.
     unsafe fn alloc(&mut self, layout: Layout) -> *mut u8 {
-        unimplemented!()
+        let bin_number = get_bin_for_size(layout.size());
+
+        let mut n : usize = 0;
+        match bin_number {
+            Ok(p) => { n = p; }
+            Error => { return core::ptr::null_mut() }
+        }
+
+        let bin_size = bin_index_size(n);
+
+        for i in n..BINS_LEN {
+            for node in self.bins[i].iter_mut() {
+                let addr = node.value() as usize;
+                let addr_align = align_up(addr, layout.align());
+                if addr == addr_align {
+                    node.pop();
+                    // If we found a bigger bin than needed, move second unused half of the memory
+                    // into the previous bin
+                    if i > n {
+                        let this_bin_size = bin_index_size(i);
+                        self.bins[i - 1].push((addr + this_bin_size / 2) as *mut usize);
+                    }
+                    return addr as *mut u8;
+                }
+            }
+        }
+
+        // nothing available
+        let start = align_up(self.start, layout.align());
+        let (end, overflow) = start.overflowing_add(bin_size);
+        if overflow || end > self.end {
+            return core::ptr::null_mut();
+        } else {
+            self.start = end;
+            start as *mut u8
+        }
     }
 
     /// Deallocates the memory referenced by `ptr`.
@@ -89,7 +124,9 @@ impl LocalAlloc for Allocator {
     /// Parameters not meeting these conditions may result in undefined
     /// behavior.
     unsafe fn dealloc(&mut self, ptr: *mut u8, layout: Layout) {
-        unimplemented!("bin allocator")
+        let bin_number = get_bin_for_size(layout.size())
+            .expect("should never be deallocating something that could not have been allocated");
+        self.bins[bin_number].push(ptr as *mut usize);
     }
 }
 
