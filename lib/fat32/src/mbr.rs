@@ -58,8 +58,8 @@ pub struct MasterBootRecord {
 impl fmt::Debug for MasterBootRecord {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         self.disk_id_1.fmt(f)?;
-        for (i, table) in mbr.partition_table.iter().enumerate() {
-            write!(f, "Partition {}: {}", i, table);
+        for (i, table) in self.partition_table.iter().enumerate() {
+            table.fmt(f)?;
         }
         write!(f, "Signature: {}", self.signature);
         Ok(())
@@ -89,14 +89,14 @@ impl MasterBootRecord {
     /// reading the MBR.
     pub fn from<T: BlockDevice>(mut device: T) -> Result<MasterBootRecord, Error> {
         let mut buf = [0u8; 512]; // MBR is always 512
-        device.read_sector(0, &mut buf);
+        device.read_sector(0, &mut buf).map_err(|error|{Error::Io(error) })?;
         let mbr = unsafe { *{ buf.as_ptr() as *const MasterBootRecord } };
         if mbr.signature != 0xAA55 {
-            return Err(BadSignature)
+            return Err(Error::BadSignature)
         }
         for (i, table) in mbr.partition_table.iter().enumerate() {
             if table.boot != 0x0 && table.boot != 0x80 {
-                return Err(UnknownBootIndicator(i.try_into().unwrap()))
+                return Err(Error::UnknownBootIndicator(i.try_into().unwrap()))
             }
         }
         Ok(mbr)

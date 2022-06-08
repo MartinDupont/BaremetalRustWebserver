@@ -45,10 +45,11 @@ impl CachedPartition {
     ///
     /// Panics if the partition's sector size is < the device's sector size.
     pub fn new<T>(device: T, partition: Partition) -> CachedPartition
-    where
-        T: BlockDevice + 'static,
+        where
+            T: BlockDevice + 'static,
     {
         assert!(partition.sector_size >= device.sector_size());
+        assert!(partition.sector_size % device.sector_size() == 0);
 
         CachedPartition {
             device: Box::new(device),
@@ -87,7 +88,23 @@ impl CachedPartition {
     ///
     /// Returns an error if there is an error reading the sector from the disk.
     pub fn get_mut(&mut self, sector: u64) -> io::Result<&mut [u8]> {
-        unimplemented!("CachedPartition::get_mut()")
+        return if let Some(x) = self.cache.get_mut(&sector) {
+            Ok(x.data.as_mut_slice())
+        } else {
+            let physical_sector = self.virtual_to_physical(sector)
+                .ok_or(io::Error::new(io::ErrorKind::Other, "Virtual address cannot be mapped to physical"))?;
+
+            let mut buffer = vec![0u8; self.partition.sector_size as usize];
+            self.device.read_sector(physical_sector, buffer.as_mut_slice())?;
+
+            let cache_entry = CacheEntry {
+                data: buffer,
+                dirty: false,
+            };
+
+            self.cache.insert(sector, cache_entry);
+            Ok(buffer.as_mut_slice())
+        };
     }
 
     /// Returns a reference to the cached sector `sector`. If the sector is not

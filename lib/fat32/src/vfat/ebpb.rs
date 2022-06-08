@@ -53,7 +53,7 @@ impl BiosParameterBlock {
     /// If the EBPB signature is invalid, returns an error of `BadSignature`.
     pub fn from<T: BlockDevice>(mut device: T, sector: u64) -> Result<BiosParameterBlock, Error> {
         let mut buf = [0u8; 512]; // EBPB is always 512
-        device.read_sector(sector, &mut buf);
+        device.read_sector(sector, &mut buf).map_err(|error|{Error::Io(error) })?;
         let ebpb = unsafe { *{ buf.as_ptr() as *const BiosParameterBlock } };
         if ebpb.bootable_partition_signature != 0xAA55 {
             return Err(BadSignature);
