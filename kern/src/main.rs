@@ -21,14 +21,15 @@ use console::kprintln;
 use pi::uart::uart_io;
 use shim::io::Write;
 use shim::io::Read;
-use allocator::Allocator;
 
 #[cfg_attr(not(test), global_allocator)]
 pub static ALLOCATOR: Allocator = Allocator::uninitialized();
+pub static FILESYSTEM: FileSystem = FileSystem::uninitialized();
 
 fn kmain() -> ! {
     unsafe {
         ALLOCATOR.initialize();
+        FILESYSTEM.initialize();
     }
     shell::shell("> ");
 }
