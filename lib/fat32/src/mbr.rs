@@ -91,7 +91,7 @@ impl MasterBootRecord {
         let mut buf = [0u8; 512]; // MBR is always 512
         device.read_sector(0, &mut buf);
         let mbr = unsafe { *{ buf.as_ptr() as *const MasterBootRecord } };
-        if mbr.signature != 0x55AA {
+        if mbr.signature != 0xAA55 {
             return Err(BadSignature)
         }
         for (i, table) in mbr.partition_table.iter().enumerate() {

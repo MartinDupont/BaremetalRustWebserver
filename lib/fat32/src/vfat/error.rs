@@ -8,6 +8,7 @@ pub enum Error {
     Io(io::Error),
     BadSignature,
     NotFound,
+    NotFormatted,
 }
 
 impl From<mbr::Error> for Error {
