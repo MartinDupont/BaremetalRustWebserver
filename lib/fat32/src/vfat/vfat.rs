@@ -66,14 +66,22 @@ impl<HANDLE: VFatHandle> VFat<HANDLE> {
         Ok(HANDLE::new(vfat))
     }
 
-    //* A method to read from an offset of a cluster into a buffer.
+    fn get_sector_for_cluster(&self, cluster: Cluster) -> u64 {
+        self.data_start_sector + (cluster.raw() as u64 * self.sectors_per_cluster as u64)
+    }
 
-    // fn read_cluster(
-    //     &mut self,
-    //     cluster: Cluster,
-    //     offset: usize,
-    //     buf: &mut [u8],
-    // ) -> io::Result<usize>;
+    fn read_cluster(
+        &mut self,
+        cluster: Cluster,
+        offset: usize,
+        buf: &mut [u8],
+    ) -> io::Result<usize> {
+        let sector = self.get_sector_for_cluster(cluster);
+        let sector_data = self.device.get(sector)?;
+
+        buf.copy_from_slice(&sector_data[offset..]);
+        Ok(buf.len())
+    }
 
     //* A method to read all of the clusters chained from a starting cluster into a vector.
 
@@ -83,10 +91,8 @@ impl<HANDLE: VFatHandle> VFat<HANDLE> {
     //     buf: &mut Vec<u8>,
     // ) -> io::Result<usize>;
 
-    //* A method to return a reference to a `FatEntry` for a cluster where the reference points directly into a cached sector.
-
     fn fat_entry(&mut self, cluster: Cluster) -> io::Result<&FatEntry> {
-        let fat_entries_per_sector = self.device.sector_size() as usize /4 ;
+        let fat_entries_per_sector = self.device.sector_size() as usize / 4;
         let sector = self.fat_start_sector + cluster.raw() as u64 / (fat_entries_per_sector as u64);
         let offset = cluster.raw() as usize % (fat_entries_per_sector as usize);
         let offset_bytes = offset * 4;
