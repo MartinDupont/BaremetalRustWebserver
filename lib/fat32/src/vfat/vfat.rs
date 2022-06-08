@@ -36,10 +36,34 @@ pub struct VFat<HANDLE: VFatHandle> {
 
 impl<HANDLE: VFatHandle> VFat<HANDLE> {
     pub fn from<T>(mut device: T) -> Result<HANDLE, Error>
-    where
-        T: BlockDevice + 'static,
+        where
+            T: BlockDevice + 'static,
     {
-        unimplemented!("VFat::from()")
+        let mbr = MasterBootRecord::from(device)?;
+        let ebpb = BiosParameterBlock::from(device, 1)?;
+
+        let first_partition = mbr.partition_table[0];
+
+        let partition = Partition {
+            start: first_partition.relative_sector as u64,
+            num_sectors: first_partition.total_sectors_in_partition as u64,
+            sector_size: ebpb.bytes_per_sector as u64 * first_partition.total_sectors_in_partition as u64,
+        };
+        let cached_partition = CachedPartition::new(device, partition);
+
+        let rootdir_cluster = Cluster::from(ebpb.cluster_number_of_root);
+
+        let vfat = VFat {
+            phantom: Default::default(),
+            device: cached_partition,
+            bytes_per_sector: ebpb.bytes_per_sector, // TODO: CHeck little endianness.
+            sectors_per_cluster: ebpb.sectors_per_cluster,
+            sectors_per_fat: ebpb.sectors_per_fat,
+            fat_start_sector: 1 + ebpb.number_reserved_sectors as u64,
+            data_start_sector: 1 + ebpb.number_reserved_sectors as u64 + (ebpb.number_fats as u64 * ebpb.number_sectors_per_fat as u64),
+            rootdir_cluster: rootdir_cluster,
+        };
+        Ok(HANDLE::new(vfat))
     }
 
     // TODO: The following methods may be useful here:

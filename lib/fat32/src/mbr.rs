@@ -27,8 +27,8 @@ pub struct PartitionEntry {
     starting_chs: CHS,
     partition_type: u8,
     ending_chs: CHS,
-    relative_sector: u32,
-    total_sectors_in_partition: u32,
+    pub relative_sector: u32,
+    pub total_sectors_in_partition: u32,
 }
 
 impl fmt::Debug for PartitionEntry {
@@ -49,10 +49,10 @@ const_assert_size!(PartitionEntry, 16);
 /// The master boot record (MBR).
 #[repr(C, packed)]
 pub struct MasterBootRecord {
-    bootstrap: [u8; 436],
-    disk_id_1: [u8; 10],
-    partition_table: [PartitionEntry; 4],
-    signature: u16,
+    pub bootstrap: [u8; 436],
+    pub disk_id_1: [u8; 10],
+    pub partition_table: [PartitionEntry; 4],
+    pub signature: u16,
 }
 
 impl fmt::Debug for MasterBootRecord {
