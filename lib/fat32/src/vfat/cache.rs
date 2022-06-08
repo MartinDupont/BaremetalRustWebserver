@@ -114,7 +114,23 @@ impl CachedPartition {
     ///
     /// Returns an error if there is an error reading the sector from the disk.
     pub fn get(&mut self, sector: u64) -> io::Result<&[u8]> {
-        unimplemented!("CachedPartition::get()")
+        return if let Some(x) = self.cache.get_mut(&sector) {
+            Ok(x.data.as_slice())
+        } else {
+            let physical_sector = self.virtual_to_physical(sector)
+                .ok_or(io::Error::new(io::ErrorKind::Other, "Virtual address cannot be mapped to physical"))?;
+
+            let mut buffer = vec![0u8; self.partition.sector_size as usize];
+            self.device.read_sector(physical_sector, buffer.as_mut_slice())?;
+
+            let cache_entry = CacheEntry {
+                data: buffer,
+                dirty: false,
+            };
+
+            self.cache.insert(sector, cache_entry);
+            Ok(buffer.as_slice())
+        };
     }
 }
 
@@ -122,15 +138,23 @@ impl CachedPartition {
 // `write_sector` methods should only read/write from/to cached sectors.
 impl BlockDevice for CachedPartition {
     fn sector_size(&self) -> u64 {
-        unimplemented!()
+        self.partition.sector_size
     }
 
     fn read_sector(&mut self, sector: u64, buf: &mut [u8]) -> io::Result<usize> {
-        unimplemented!()
+        let data = self.get(sector)?;
+        buf.clone_from_slice(data);
+        Ok(data.len())
     }
 
     fn write_sector(&mut self, sector: u64, buf: &[u8]) -> io::Result<usize> {
-        unimplemented!()
+        let cache_entry = CacheEntry {
+            data: buf.to_vec(),
+            dirty: true,
+        };
+        // TODO: Do I care if the entry existed before or not? THe comment isn't clear
+        self.cache.insert(sector, cache_entry);
+        Ok(buf.len())
     }
 }
 
