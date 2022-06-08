@@ -66,30 +66,36 @@ impl<HANDLE: VFatHandle> VFat<HANDLE> {
         Ok(HANDLE::new(vfat))
     }
 
-    // TODO: The following methods may be useful here:
-    //
-    //  * A method to read from an offset of a cluster into a buffer.
-    //
-    //    fn read_cluster(
-    //        &mut self,
-    //        cluster: Cluster,
-    //        offset: usize,
-    //        buf: &mut [u8]
-    //    ) -> io::Result<usize>;
-    //
-    //  * A method to read all of the clusters chained from a starting cluster
-    //    into a vector.
-    //
-    //    fn read_chain(
-    //        &mut self,
-    //        start: Cluster,
-    //        buf: &mut Vec<u8>
-    //    ) -> io::Result<usize>;
-    //
-    //  * A method to return a reference to a `FatEntry` for a cluster where the
-    //    reference points directly into a cached sector.
-    //
-    //    fn fat_entry(&mut self, cluster: Cluster) -> io::Result<&FatEntry>;
+    //* A method to read from an offset of a cluster into a buffer.
+
+    // fn read_cluster(
+    //     &mut self,
+    //     cluster: Cluster,
+    //     offset: usize,
+    //     buf: &mut [u8],
+    // ) -> io::Result<usize>;
+
+    //* A method to read all of the clusters chained from a starting cluster into a vector.
+
+    // fn read_chain(
+    //     &mut self,
+    //     start: Cluster,
+    //     buf: &mut Vec<u8>,
+    // ) -> io::Result<usize>;
+
+    //* A method to return a reference to a `FatEntry` for a cluster where the reference points directly into a cached sector.
+
+    fn fat_entry(&mut self, cluster: Cluster) -> io::Result<&FatEntry> {
+        let fat_entries_per_sector = self.device.sector_size() as usize /4 ;
+        let sector = self.fat_start_sector + cluster.raw() as u64 / (fat_entries_per_sector as u64);
+        let offset = cluster.raw() as usize % (fat_entries_per_sector as usize);
+        let offset_bytes = offset * 4;
+        let sector_data = self.device.get(sector)?;
+        let mut bytes = [0; 4];
+
+        bytes.copy_from_slice(&sector_data[offset_bytes..offset_bytes + 4]);
+        Ok(&FatEntry(u32::from_le_bytes(bytes)))
+    }
 }
 
 impl<'a, HANDLE: VFatHandle> FileSystem for &'a HANDLE {
