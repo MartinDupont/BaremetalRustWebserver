@@ -56,14 +56,14 @@ impl BiosParameterBlock {
         device.read_sector(sector, &mut buf);
         let ebpb = unsafe { *{ buf.as_ptr() as *const BiosParameterBlock } };
         if ebpb.bootable_partition_signature != 0xAA55 {
-            return Err(BadSignature)
+            return Err(BadSignature);
         }
         if ebpb.signature != 0x28 && ebpb.signature != 0x29 {
-            return Err(BadSignature)
+            return Err(BadSignature);
         }
 
         if ebpb.__reserved != [0u8; 12] {
-            return Err(NotFormatted)
+            return Err(NotFormatted);
         }
         Ok(ebpb)
     }
@@ -71,6 +71,35 @@ impl BiosParameterBlock {
 
 impl fmt::Debug for BiosParameterBlock {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        unimplemented!("BiosParameterBlock::fmt()")
+        //write!(f, "{}", self.jump_short_noop)?;
+        write!(f, "{}", self.oem_identifier)?;
+        write!(f, "{}", self.bytes_per_sector)?;
+        write!(f, "{}", self.number_reserved_sectors)?;
+        write!(f, "{}", self.number_fats)?;
+        write!(f, "{}", self.max_number_directory_entries)?;
+        write!(f, "{}", self.total_logical_sectors_16)?;
+        write!(f, "{}", self.media_descriptor_type)?;
+        write!(f, "{}", self.number_sectors_per_fat)?;
+        write!(f, "{}", self.number_sectors_per_track)?;
+        write!(f, "{}", self.number_heads)?;
+        write!(f, "{}", self.number_hidden_sectors)?;
+        write!(f, "{}", self.total_logical_sectors_32)?;
+        write!(f, "{}", self.sectors_per_fat)?;
+        write!(f, "{}", self.flags)?;
+        write!(f, "{}", self.fat_version_number)?;
+        write!(f, "{}", self.cluster_number_of_root)?;
+        write!(f, "{}", self.sector_number_of_fs_info)?;
+        write!(f, "{}", self.sector_number_backup_boot)?;
+        //write!(f, "{}", self.__reserved)?;
+        write!(f, "{}", self.drive_number)?;
+        write!(f, "{}", self.__reserved_flags_windows_nt)?;
+        write!(f, "{}", self.signature)?;
+        write!(f, "{}", self.volume_id_serial_number)?;
+        //write!(f, "{}", self.volume_label_string)?;
+        write!(f, "{}", self.system_identifier_string)?;
+        //write!(f, "{}", self.boot_code)?;
+        write!(f, "{}", self.bootable_partition_signature)?;
+
+        Ok(())
     }
 }
