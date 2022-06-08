@@ -85,11 +85,36 @@ impl<HANDLE: VFatHandle> VFat<HANDLE> {
 
     //* A method to read all of the clusters chained from a starting cluster into a vector.
 
-    // fn read_chain(
-    //     &mut self,
-    //     start: Cluster,
-    //     buf: &mut Vec<u8>,
-    // ) -> io::Result<usize>;
+    fn read_chain(
+        &mut self,
+        start: Cluster,
+        buf: &mut Vec<u8>,
+    ) -> io::Result<usize> {
+        let mut fat = self.fat_entry(start)?;
+        let mut cluster = start;
+        let mut total : usize = 0;
+        loop {
+            let status = fat.status();
+            if status == Status::Free || status == Status::Bad || status == Status::Reserved {
+                return Err(io::Error::new(io::ErrorKind::Other, "Attempted to read VFAT partition which was reserved, bad, or free"))
+            }
+            let mut array_buf = vec![0u8; self.bytes_per_sector as usize];
+            let bytes_read = self.read_cluster(cluster, 0, &mut array_buf)?;
+            total += bytes_read;
+            buf.extend_from_slice(&array_buf);
+
+            match status {
+                Status::Eoc(x) => { break },
+                Status::Data(x) => {
+                    fat = self.fat_entry(x)?;
+                    cluster = x;
+                }
+                _ => panic!("This code should be unreachable")
+            }
+
+        }
+        Ok(total)
+    }
 
     fn fat_entry(&mut self, cluster: Cluster) -> io::Result<&FatEntry> {
         let fat_entries_per_sector = self.device.sector_size() as usize / 4;
