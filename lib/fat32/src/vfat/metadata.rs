@@ -42,45 +42,45 @@ pub struct Metadata {
     pub file_size: u32,
 }
 
-impl traits::TimestampTrait for Timestamp {
+impl traits::Timestamp for Timestamp {
     fn year(&self) -> usize {
-        self.date.0 >> 9 as usize
+        (self.date.0 >> 9) as usize
     }
 
     fn month(&self) -> u8 {
         let mask = 0b0000000011100000;
-        (self.date.0 & mask) >> 5 as u8
+        ((self.date.0 & mask) >> 5) as u8
     }
 
     fn day(&self) -> u8 {
         let mask = 0b0000000000011111;
-        self.date.0 & mask as u8
+        (self.date.0 & mask) as u8
     }
 
     fn hour(&self) -> u8 {
-        self.date.0 >> 11 as u8
+        (self.date.0 >> 11) as u8
     }
 
     fn minute(&self) -> u8 {
         let mask = 0b0000011111100000;
-        (self.date.0 & mask) >> 5 as u8
+        ((self.date.0 & mask) >> 5) as u8
     }
 
     fn second(&self) -> u8 {
         let mask = 0b0000000000011111;
-        (self.time.0 & mask as u8) * 2
+        (self.time.0 & mask) as u8 * 2
     }
 }
 
-impl traits::MetadataTrait for Metadata {
+impl traits::Metadata for Metadata {
     type Timestamp = Timestamp;
 
     fn read_only(&self) -> bool {
-        self.attributes == 0x01;
+        self.attributes.0 == 0x01
     }
 
     fn hidden(&self) -> bool {
-        self.attributes == 0x02;
+        self.attributes.0 == 0x02
     }
 
     fn created(&self) -> Self::Timestamp {
@@ -93,7 +93,7 @@ impl traits::MetadataTrait for Metadata {
     fn accessed(&self) -> Self::Timestamp {
         Timestamp {
             date: self.last_accessed_date,
-            time: 0,
+            time: Time(0),
         }
     }
 
