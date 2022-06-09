@@ -85,7 +85,7 @@ impl<HANDLE: VFatHandle> VFat<HANDLE> {
 
     //* A method to read all of the clusters chained from a starting cluster into a vector.
 
-    fn read_chain(
+    pub fn read_chain(
         &mut self,
         start: Cluster,
         buf: &mut Vec<u8>,
@@ -130,9 +130,9 @@ impl<HANDLE: VFatHandle> VFat<HANDLE> {
 }
 
 impl<'a, HANDLE: VFatHandle> FileSystem for &'a HANDLE {
-    type File = crate::traits::Dummy;
-    type Dir = crate::traits::Dummy;
-    type Entry = crate::traits::Dummy;
+    type File = File<HANDLE>;
+    type Dir = Dir<HANDLE>;
+    type Entry = Entry<HANDLE>;
 
     fn open<P: AsRef<Path>>(self, path: P) -> io::Result<Self::Entry> {
         unimplemented!("FileSystem::open()")

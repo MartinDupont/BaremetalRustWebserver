@@ -58,11 +58,13 @@ impl BiosParameterBlock {
         device.read_sector(sector, &mut buf).map_err(|error| { Error::Io(error) })?;
         let ebpb = unsafe { *{ buf.as_ptr() as *const BiosParameterBlock } };
         if ebpb.bootable_partition_signature != 0xAA55 {
+            println!("EBPB bootable not 0xAAFF, is instead {:#08x}", ebpb.bootable_partition_signature);
             return Err(BadSignature);
         }
-        if ebpb.signature != 0x28 && ebpb.signature != 0x29 {
-            return Err(BadSignature);
-        }
+        // if ebpb.signature != 0x28 && ebpb.signature != 0x29 {
+        // println!("EBPB sig not 0x28 or 0x29, is instead {:#08x}", ebpb.signature);
+        //     return Err(BadSignature);
+        // }
 
         if ebpb.__reserved != [0u8; 12] {
             return Err(NotFormatted);
