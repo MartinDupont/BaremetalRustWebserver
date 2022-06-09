@@ -3,14 +3,11 @@ use crate::vfat;
 use crate::vfat::{Dir, File, Metadata, VFatHandle};
 use core::fmt;
 
-// You can change this definition if you want
 #[derive(Debug)]
 pub enum Entry<HANDLE: VFatHandle> {
     File(File<HANDLE>),
     Dir(Dir<HANDLE>),
 }
-
-// TODO: Implement any useful helper methods on `Entry`.
 
 impl<HANDLE: VFatHandle> traits::Entry for Entry<HANDLE> {
     type File = File<HANDLE>;
@@ -19,13 +16,16 @@ impl<HANDLE: VFatHandle> traits::Entry for Entry<HANDLE> {
 
     fn name(&self) -> &str {
         match self {
-            Entry::File(x) => &x.name,
-            Entry::Dir(x) => &x.name
+            Entry::File(x) => &x.metadata.name,
+            Entry::Dir(x) => &x.metadata.name
         }
     }
 
     fn metadata(&self) -> &Self::Metadata {
-        unimplemented!()
+        match self {
+            Entry::File(x) => &x.metadata,
+            Entry::Dir(x) => &x.metadata
+        }
     }
 
     fn as_file(&self) -> Option<&<Self as traits::Entry>::File> {

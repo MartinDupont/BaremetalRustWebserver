@@ -16,7 +16,7 @@ use crate::vfat::{Cluster, Entry, File, VFatHandle};
 pub struct Dir<HANDLE: VFatHandle> {
     pub vfat: HANDLE,
     pub first_cluster: Cluster,
-    pub name: String,
+    pub metadata: Metadata,
 }
 
 pub struct DirIter<HANDLE: VFatHandle> {
@@ -48,6 +48,16 @@ const_assert_size!(VFatRegularDirEntry, 32);
 impl VFatRegularDirEntry {
     pub fn first_cluster(&self) -> Cluster {
         Cluster::from(self.low_bits_cluster_number as u32 | (self.high_bits_cluster_number as u32) << 16)
+    }
+
+    pub fn make_metadata(&self, name: String) -> Metadata {
+        Metadata {
+            attributes: self.attributes,
+            created_ts: Timestamp { date: self.creation_date, time: self.creation_time },
+            accessed_ts: Timestamp { date: self.last_accessed_date, time: Time(0) },
+            modified_ts: Timestamp { date: self.last_modification_date, time: self.last_modification_time },
+            name,
+        }
     }
 }
 
@@ -161,16 +171,19 @@ impl<HANDLE: VFatHandle> Iterator for DirIter<HANDLE> {
         name = String::from_utf16_lossy(&name_u16[..name_len]);
 
         let first_cluster = regular_entry.first_cluster();
+
+        let metadata = regular_entry.make_metadata(name);
+
         let value = if regular_entry.attributes.directory() {
             Entry::Dir(Dir {
                 vfat: self.vfat.clone(),
                 first_cluster: first_cluster,
-                name,
+                metadata,
             })
         } else {
             Entry::File(File {
                 vfat: self.vfat.clone(),
-                name,
+                metadata,
             })
         };
         return Some(value);

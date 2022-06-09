@@ -13,7 +13,7 @@ use shim::path::{Component, Path};
 use crate::mbr::MasterBootRecord;
 use crate::traits::{BlockDevice, FileSystem};
 use crate::util::SliceExt;
-use crate::vfat::{BiosParameterBlock, CachedPartition, Partition};
+use crate::vfat::{Attributes, BiosParameterBlock, CachedPartition, Metadata, Partition, Timestamp, Date, Time};
 use crate::vfat::{Cluster, Dir, Entry, Error, FatEntry, File, Status};
 
 /// A generic trait that handles a critical section as a closure
@@ -129,6 +129,16 @@ impl<HANDLE: VFatHandle> VFat<HANDLE> {
     }
 }
 
+fn make_root_dir_metadata() -> Metadata {
+    Metadata {
+        attributes: Attributes(0),
+        created_ts: Timestamp { date: Date(0), time: Time(0) },
+        accessed_ts: Timestamp { date: Date(0), time: Time(0) },
+        modified_ts: Timestamp { date: Date(0), time: Time(0) },
+        name: String::from("/"),
+    }
+}
+
 impl<'a, HANDLE: VFatHandle> FileSystem for &'a HANDLE {
     type File = File<HANDLE>;
     type Dir = Dir<HANDLE>;
@@ -138,14 +148,14 @@ impl<'a, HANDLE: VFatHandle> FileSystem for &'a HANDLE {
         let mut dir = Dir {
             vfat: self.clone(),
             first_cluster: self.lock(|vfat| vfat.rootdir_cluster),
-            name: String::from("/"),
+            metadata: make_root_dir_metadata(),
         };
 
         let mut file: Option<File<HANDLE>> = None;
 
         for component in path.as_ref().components() {
             if component == Component::RootDir {
-                continue
+                continue;
             }
             if file.is_some() {
                 return Err(io::Error::new(io::ErrorKind::NotFound, "Not a directory"));
@@ -158,6 +168,5 @@ impl<'a, HANDLE: VFatHandle> FileSystem for &'a HANDLE {
             }
         }
         Ok(Entry::Dir(dir))
-
     }
 }

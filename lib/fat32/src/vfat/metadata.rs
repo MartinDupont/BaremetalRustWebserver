@@ -8,12 +8,12 @@ use crate::traits;
 /// A date as represented in FAT32 on-disk structures.
 #[repr(C, packed)]
 #[derive(Default, Debug, Copy, Clone, PartialEq, Eq)]
-pub struct Date(u16);
+pub struct Date(pub u16);
 
 /// Time as represented in FAT32 on-disk structures.
 #[repr(C, packed)]
 #[derive(Default, Debug, Copy, Clone, PartialEq, Eq)]
-pub struct Time(u16);
+pub struct Time(pub u16);
 
 const ATTR_READ_ONLY: u8 = 1 << 0;
 const ATTR_HIDDEN: u8 = 1 << 1;
@@ -26,7 +26,7 @@ const ATTR_LFN: u8 = ATTR_READ_ONLY | ATTR_HIDDEN | ATTR_SYSTEM | ATTR_VOLUME_ID
 /// File attributes as represented in FAT32 on-disk structures.
 #[repr(C, packed)]
 #[derive(Default, Debug, Copy, Clone, PartialEq, Eq)]
-pub struct Attributes(u8);
+pub struct Attributes(pub u8);
 
 const ROOTDIR_ATTRIBUTES: Attributes = Attributes(ATTR_DIRECTORY);
 
@@ -70,6 +70,7 @@ pub struct Metadata {
     pub created_ts: Timestamp,
     pub accessed_ts: Timestamp,
     pub modified_ts: Timestamp,
+    pub name: String,
 }
 
 impl traits::Timestamp for Timestamp {
