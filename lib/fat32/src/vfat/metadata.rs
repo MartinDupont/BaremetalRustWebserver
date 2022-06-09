@@ -106,25 +106,31 @@ impl traits::Metadata for Metadata {
 }
 
 impl fmt::Display for Timestamp {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        write!(f, "{} / {} / {}: {}:{}:{}", self.day(), self.month(), self.year(), self.hour(), self.minute(), self.second())?;
-        Ok(())
+    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+        use crate::traits::Timestamp;
+        write!(
+            f,
+            "{:04}-{:02}-{:02} {:02}:{:02}:{:02}",
+            self.year(),
+            self.month(),
+            self.day(),
+            self.hour(),
+            self.minute(),
+            self.second()
+        )
     }
 }
 
 impl fmt::Display for Metadata {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        write!(f, "Readonly: {}", self.read_only())?;
-        write!(f, "Hidden: {}", self.hidden())?;
-        write!(f, "Created")?;
-        self.created().fmt()?;
-        write!(f, "Accessed")?;
-        self.accessed().fmt()?;
-        write!(f, "Modified")?;
-        self.modified().fmt()?;
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        use traits::Metadata;
 
-        Ok(())
+        f.debug_struct("Metadata")
+            .field("read_only", &self.read_only())
+            .field("hidden", &self.hidden())
+            .field("created", &self.created())
+            .field("accessed", &self.accessed())
+            .field("modified", &self.modified())
+            .finish()
     }
 }
-
-// FIXME: Implement `fmt::Display` (to your liking) for `Metadata`.
