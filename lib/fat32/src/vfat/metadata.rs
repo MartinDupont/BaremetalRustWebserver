@@ -71,6 +71,7 @@ pub struct Metadata {
     pub accessed_ts: Timestamp,
     pub modified_ts: Timestamp,
     pub name: String,
+    pub size: u32,
 }
 
 impl traits::Timestamp for Timestamp {

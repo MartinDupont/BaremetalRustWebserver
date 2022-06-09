@@ -57,6 +57,7 @@ impl VFatRegularDirEntry {
             accessed_ts: Timestamp { date: self.last_accessed_date, time: Time(0) },
             modified_ts: Timestamp { date: self.last_modification_date, time: self.last_modification_time },
             name,
+            size: self.file_size,
         }
     }
 }

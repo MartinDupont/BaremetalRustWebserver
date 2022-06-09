@@ -136,6 +136,7 @@ fn make_root_dir_metadata() -> Metadata {
         accessed_ts: Timestamp { date: Date(0), time: Time(0) },
         modified_ts: Timestamp { date: Date(0), time: Time(0) },
         name: String::from("/"),
+        size: 0
     }
 }
 

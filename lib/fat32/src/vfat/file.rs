@@ -11,15 +11,13 @@ pub struct File<HANDLE: VFatHandle> {
     pub metadata: Metadata,
 }
 
-// FIXME: Implement `traits::File` (and its supertraits) for `File`.
-
 impl<HANDLE: VFatHandle> traits::File for File<HANDLE> {
     fn sync(&mut self) -> io::Result<()> {
-        unimplemented!()
+        Ok(())
     }
 
     fn size(&self) -> u64 {
-        unimplemented!()
+        self.metadata.size as u64
     }
 }
 
