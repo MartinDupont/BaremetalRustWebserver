@@ -15,6 +15,7 @@ use crate::traits::{BlockDevice, FileSystem};
 use crate::util::SliceExt;
 use crate::vfat::{Attributes, BiosParameterBlock, CachedPartition, Metadata, Partition, Timestamp, Date, Time};
 use crate::vfat::{Cluster, Dir, Entry, Error, FatEntry, File, Status};
+use crate::vfat::Error::NotFormatted;
 
 /// A generic trait that handles a critical section as a closure
 pub trait VFatHandle: Clone + Debug + Send + Sync {
@@ -40,9 +41,14 @@ impl<HANDLE: VFatHandle> VFat<HANDLE> {
             T: BlockDevice + 'static,
     {
         let mbr = MasterBootRecord::from(&mut device)?;
-        let ebpb = BiosParameterBlock::from(&mut device, 1)?;
 
         let first_partition = mbr.partition_table[0];
+
+        if first_partition.partition_type != 0xB && first_partition.partition_type != 0xC {
+            return Err(NotFormatted);
+        }
+
+        let ebpb = BiosParameterBlock::from(&mut device, first_partition.relative_sector as u64)?;
 
         let partition = Partition {
             start: first_partition.relative_sector as u64,
