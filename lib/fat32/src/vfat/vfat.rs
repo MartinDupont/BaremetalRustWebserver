@@ -70,7 +70,7 @@ impl<HANDLE: VFatHandle> VFat<HANDLE> {
         self.data_start_sector + (cluster.raw() as u64 * self.sectors_per_cluster as u64)
     }
 
-    fn read_cluster(
+    pub fn read_cluster(
         &mut self,
         cluster: Cluster,
         offset: usize,

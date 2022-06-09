@@ -184,6 +184,7 @@ impl<HANDLE: VFatHandle> Iterator for DirIter<HANDLE> {
         } else {
             Entry::File(File {
                 vfat: self.vfat.clone(),
+                first_cluster: first_cluster,
                 metadata,
             })
         };

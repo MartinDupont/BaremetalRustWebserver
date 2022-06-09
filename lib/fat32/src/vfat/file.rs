@@ -9,6 +9,7 @@ use crate::vfat::{Cluster, Metadata, VFatHandle};
 pub struct File<HANDLE: VFatHandle> {
     pub vfat: HANDLE,
     pub metadata: Metadata,
+    pub first_cluster: Cluster,
 }
 
 impl<HANDLE: VFatHandle> traits::File for File<HANDLE> {
@@ -23,13 +24,17 @@ impl<HANDLE: VFatHandle> traits::File for File<HANDLE> {
 
 impl<HANDLE: VFatHandle> io::Read for File<HANDLE> {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
-        unimplemented!()
+        self.vfat.lock(|vfat| -> io::Result<()> {
+            vfat.read_cluster(self.first_cluster, 0, buf)?;
+            Ok(())
+        })?;
+        Ok(buf.len())
     }
 }
 
 impl<HANDLE: VFatHandle> io::Write for File<HANDLE> {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        unimplemented!()
+        Ok(0)
     }
     fn flush(&mut self) -> io::Result<()> {
         Ok(())
