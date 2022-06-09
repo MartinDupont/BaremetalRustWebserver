@@ -22,6 +22,7 @@ impl fmt::Debug for CHS {
 const_assert_size!(CHS, 3);
 
 #[repr(C, packed)]
+#[derive(Clone, Copy)]
 pub struct PartitionEntry {
     boot: u8,
     starting_chs: CHS,
@@ -47,6 +48,7 @@ impl fmt::Debug for PartitionEntry {
 const_assert_size!(PartitionEntry, 16);
 
 /// The master boot record (MBR).
+#[derive(Clone, Copy)]
 #[repr(C, packed)]
 pub struct MasterBootRecord {
     pub bootstrap: [u8; 436],

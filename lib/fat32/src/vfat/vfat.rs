@@ -39,8 +39,8 @@ impl<HANDLE: VFatHandle> VFat<HANDLE> {
         where
             T: BlockDevice + 'static,
     {
-        let mbr = MasterBootRecord::from(device)?;
-        let ebpb = BiosParameterBlock::from(device, 1)?;
+        let mbr = MasterBootRecord::from(&mut device)?;
+        let ebpb = BiosParameterBlock::from(&mut device, 1)?;
 
         let first_partition = mbr.partition_table[0];
 
@@ -116,7 +116,7 @@ impl<HANDLE: VFatHandle> VFat<HANDLE> {
         Ok(total)
     }
 
-    fn fat_entry(&mut self, cluster: Cluster) -> io::Result<&FatEntry> {
+    fn fat_entry(&mut self, cluster: Cluster) -> io::Result<FatEntry> {
         let fat_entries_per_sector = self.device.sector_size() as usize / 4;
         let sector = self.fat_start_sector + cluster.raw() as u64 / (fat_entries_per_sector as u64);
         let offset = cluster.raw() as usize % (fat_entries_per_sector as usize);
@@ -125,7 +125,7 @@ impl<HANDLE: VFatHandle> VFat<HANDLE> {
         let mut bytes = [0; 4];
 
         bytes.copy_from_slice(&sector_data[offset_bytes..offset_bytes + 4]);
-        Ok(&FatEntry(u32::from_le_bytes(bytes)))
+        Ok(FatEntry(u32::from_le_bytes(bytes)))
     }
 }
 

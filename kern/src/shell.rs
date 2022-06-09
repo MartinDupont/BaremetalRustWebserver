@@ -10,7 +10,6 @@ use fat32::traits::{Dir, Entry};
 
 use crate::console::{kprint, kprintln, CONSOLE};
 use crate::ALLOCATOR;
-use crate::FILESYSTEM;
 
 use shim::io::Write;
 use shim::io::Read;

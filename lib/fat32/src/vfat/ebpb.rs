@@ -6,6 +6,7 @@ use crate::vfat::Error;
 use crate::vfat::Error::{NotFormatted, BadSignature};
 
 // TODO: Check endianness of sectors per cluster. It's little endian!!
+#[derive(Clone, Copy)]
 #[repr(C, packed)]
 pub struct BiosParameterBlock {
     pub jump_short_noop: [u8; 3],

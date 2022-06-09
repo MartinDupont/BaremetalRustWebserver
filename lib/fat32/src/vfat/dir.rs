@@ -83,5 +83,12 @@ impl<HANDLE: VFatHandle> Dir<HANDLE> {
 }
 
 impl<HANDLE: VFatHandle> traits::Dir for Dir<HANDLE> {
+    type Entry = traits::Dummy;
+    type Iter = traits::Dummy;
+
+    fn entries(&self) -> io::Result<Self::Iter> {
+        unimplemented!()
+
+    }
     // FIXME: Implement `trait::Dir` for `Dir`.
 }
