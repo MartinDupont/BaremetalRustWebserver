@@ -18,7 +18,10 @@ impl<HANDLE: VFatHandle> traits::Entry for Entry<HANDLE> {
     type Metadata = Metadata;
 
     fn name(&self) -> &str {
-        "dummy"
+        match self {
+            Entry::File(x) => &x.name,
+            Entry::Dir(x) => &x.name
+        }
     }
 
     fn metadata(&self) -> &Self::Metadata {

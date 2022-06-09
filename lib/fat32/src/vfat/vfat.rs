@@ -98,6 +98,7 @@ impl<HANDLE: VFatHandle> VFat<HANDLE> {
             if status == Status::Free || status == Status::Bad || status == Status::Reserved {
                 return Err(io::Error::new(io::ErrorKind::Other, "Attempted to read VFAT partition which was reserved, bad, or free"))
             }
+            // TODO: Refactor this to avoid the panic!() call.
             let mut array_buf = vec![0u8; self.bytes_per_sector as usize];
             let bytes_read = self.read_cluster(cluster, 0, &mut array_buf)?;
             total += bytes_read;
@@ -135,6 +136,15 @@ impl<'a, HANDLE: VFatHandle> FileSystem for &'a HANDLE {
     type Entry = Entry<HANDLE>;
 
     fn open<P: AsRef<Path>>(self, path: P) -> io::Result<Self::Entry> {
-        unimplemented!("FileSystem::open()")
+        let mut dir = Dir {
+            vfat: self.clone(),
+            first_cluster: self.lock(|vfat| vfat.rootdir_cluster),
+            name: String::from("/"),
+        };
+
+
+
+
+        Err(io::Error::new(io::ErrorKind::BrokenPipe, "uh-oh!"))
     }
 }

@@ -8,6 +8,7 @@ use crate::vfat::{Cluster, Metadata, VFatHandle};
 #[derive(Debug)]
 pub struct File<HANDLE: VFatHandle> {
     pub vfat: HANDLE,
+    pub name: String,
     // FIXME: Fill me in.
 }
 

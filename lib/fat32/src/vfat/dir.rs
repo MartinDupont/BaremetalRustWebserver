@@ -16,6 +16,7 @@ use crate::vfat::{Cluster, Entry, File, VFatHandle};
 pub struct Dir<HANDLE: VFatHandle> {
     pub vfat: HANDLE,
     pub first_cluster: Cluster,
+    pub name: String,
 }
 
 pub struct DirIter<HANDLE: VFatHandle> {
@@ -49,8 +50,6 @@ impl VFatRegularDirEntry {
         Cluster::from(self.low_bits_cluster_number as u32 | (self.high_bits_cluster_number as u32) << 16)
     }
 }
-
-
 
 
 #[repr(C, packed)]
@@ -97,7 +96,15 @@ impl<HANDLE: VFatHandle> Dir<HANDLE> {
     /// If `name` contains invalid UTF-8 characters, an error of `InvalidInput`
     /// is returned.
     pub fn find<P: AsRef<OsStr>>(&self, name: P) -> io::Result<Entry<HANDLE>> {
-        unimplemented!("Dir::find()")
+        use crate::traits::Dir;
+        use crate::traits::Entry;
+        let name = name
+            .as_ref()
+            .to_str()
+            .ok_or(newioerr!(InvalidInput, "name is not utf-8"))?;
+        self.entries()?
+            .find(|e| e.name().eq_ignore_ascii_case(name))
+            .ok_or(newioerr!(NotFound, "file name not found"))
     }
 }
 
@@ -158,13 +165,15 @@ impl<HANDLE: VFatHandle> Iterator for DirIter<HANDLE> {
             Entry::Dir(Dir {
                 vfat: self.vfat.clone(),
                 first_cluster: first_cluster,
+                name,
             })
         } else {
             Entry::File(File {
                 vfat: self.vfat.clone(),
+                name,
             })
         };
-        return Some(value)
+        return Some(value);
     }
 }
 
@@ -190,6 +199,10 @@ impl<HANDLE: VFatHandle> traits::Dir for Dir<HANDLE> {
         // I need to ask metadata.attributes to find out whether the thing I need is a subdirectory or not.
 
         // If I know I have a directory. How do I get its children??
+
+        // Can both Directories and files have long file names????
+
+        // I still don't think I've LOADED the data yet......
 
 
         Ok(DirIter {
