@@ -8,7 +8,7 @@ use shim::io;
 use shim::ioerr;
 use shim::newioerr;
 use shim::path;
-use shim::path::Path;
+use shim::path::{Component, Path};
 
 use crate::mbr::MasterBootRecord;
 use crate::traits::{BlockDevice, FileSystem};
@@ -92,11 +92,11 @@ impl<HANDLE: VFatHandle> VFat<HANDLE> {
     ) -> io::Result<usize> {
         let mut fat = self.fat_entry(start)?;
         let mut cluster = start;
-        let mut total : usize = 0;
+        let mut total: usize = 0;
         loop {
             let status = fat.status();
             if status == Status::Free || status == Status::Bad || status == Status::Reserved {
-                return Err(io::Error::new(io::ErrorKind::Other, "Attempted to read VFAT partition which was reserved, bad, or free"))
+                return Err(io::Error::new(io::ErrorKind::Other, "Attempted to read VFAT partition which was reserved, bad, or free"));
             }
             // TODO: Refactor this to avoid the panic!() call.
             let mut array_buf = vec![0u8; self.bytes_per_sector as usize];
@@ -105,14 +105,13 @@ impl<HANDLE: VFatHandle> VFat<HANDLE> {
             buf.extend_from_slice(&array_buf);
 
             match status {
-                Status::Eoc(x) => { break },
+                Status::Eoc(x) => { break; }
                 Status::Data(x) => {
                     fat = self.fat_entry(x)?;
                     cluster = x;
                 }
                 _ => panic!("This code should be unreachable")
             }
-
         }
         Ok(total)
     }
@@ -142,9 +141,23 @@ impl<'a, HANDLE: VFatHandle> FileSystem for &'a HANDLE {
             name: String::from("/"),
         };
 
+        let mut file: Option<File<HANDLE>> = None;
 
+        for component in path.as_ref().components() {
+            if component == Component::RootDir {
+                continue
+            }
+            if file.is_some() {
+                return Err(io::Error::new(io::ErrorKind::NotFound, "Not a directory"));
+            }
+            let found = dir.find(component)?;
 
+            match found {
+                Entry::Dir(x) => { dir = x }
+                Entry::File(x) => { file = Some(x); }
+            }
+        }
+        Ok(Entry::Dir(dir))
 
-        Err(io::Error::new(io::ErrorKind::BrokenPipe, "uh-oh!"))
     }
 }
