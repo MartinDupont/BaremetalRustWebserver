@@ -31,15 +31,9 @@ pub struct Timestamp {
 #[derive(Default, Debug, Clone)]
 pub struct Metadata {
     pub attributes: Attributes,
-    creation_time_tenths: u8,
-    pub creation_time: Time,
-    pub creation_date: Date,
-    pub last_accessed_date: Date,
-    high_bits_cluster_number: u8,
-    pub last_modification_time: Time,
-    pub last_modification_date: Date,
-    pub low_bits_cluster_number: u8,
-    pub file_size: u32,
+    pub created_ts: Timestamp,
+    pub accessed_ts: Timestamp,
+    pub modified_ts: Timestamp
 }
 
 impl traits::Timestamp for Timestamp {
@@ -84,24 +78,15 @@ impl traits::Metadata for Metadata {
     }
 
     fn created(&self) -> Self::Timestamp {
-        Timestamp {
-            date: self.creation_date,
-            time: self.creation_time,
-        }
+        self.created_ts
     }
 
     fn accessed(&self) -> Self::Timestamp {
-        Timestamp {
-            date: self.last_accessed_date,
-            time: Time(0),
-        }
+        self.accessed_ts
     }
 
     fn modified(&self) -> Self::Timestamp {
-        Timestamp {
-            date: self.last_modification_date,
-            time: self.last_modification_time,
-        }
+        self.modified_ts
     }
 }
 

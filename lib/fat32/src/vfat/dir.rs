@@ -20,7 +20,19 @@ pub struct Dir<HANDLE: VFatHandle> {
 #[repr(C, packed)]
 #[derive(Copy, Clone)]
 pub struct VFatRegularDirEntry {
-    // FIXME: Fill me in.
+    file_name: u64,
+    extension: [u8; 3],
+    pub attributes: Attributes,
+    __reserved: u8,
+    creation_time_tenths: u8,
+    pub creation_time: Time,
+    pub creation_date: Date,
+    pub last_accessed_date: Date,
+    high_bits_cluster_number: u16,
+    pub last_modification_time: Time,
+    pub last_modification_date: Date,
+    pub low_bits_cluster_number: u16,
+    pub file_size: u32,
 }
 
 const_assert_size!(VFatRegularDirEntry, 32);
@@ -28,7 +40,14 @@ const_assert_size!(VFatRegularDirEntry, 32);
 #[repr(C, packed)]
 #[derive(Copy, Clone)]
 pub struct VFatLfnDirEntry {
-    // FIXME: Fill me in.
+    sequence_number: u8,
+    name_characters: [u8; 10],
+    attributes: Attributes,
+    entry_type: u8,
+    checksum: u8,
+    name_characters_2: [u8;12],
+    empty: u16,
+    name_characters_3: u32,
 }
 
 const_assert_size!(VFatLfnDirEntry, 32);
@@ -36,7 +55,7 @@ const_assert_size!(VFatLfnDirEntry, 32);
 #[repr(C, packed)]
 #[derive(Copy, Clone)]
 pub struct VFatUnknownDirEntry {
-    // FIXME: Fill me in.
+    who_fucking_knows: [u8; 32],
 }
 
 const_assert_size!(VFatUnknownDirEntry, 32);
