@@ -13,7 +13,7 @@ use shim::path::{Component, Path};
 use crate::mbr::MasterBootRecord;
 use crate::traits::{BlockDevice, FileSystem};
 use crate::util::SliceExt;
-use crate::vfat::{Attributes, BiosParameterBlock, CachedPartition, Metadata, Partition, Timestamp, Date, Time};
+use crate::vfat::{Attributes, BiosParameterBlock, CachedDevice, Metadata, Timestamp, Date, Time};
 use crate::vfat::{Cluster, Dir, Entry, Error, FatEntry, File, Status};
 use crate::vfat::Error::NotFormatted;
 
@@ -26,7 +26,7 @@ pub trait VFatHandle: Clone + Debug + Send + Sync {
 #[derive(Debug)]
 pub struct VFat<HANDLE: VFatHandle> {
     phantom: PhantomData<HANDLE>,
-    device: CachedPartition,
+    device: CachedDevice,
     bytes_per_sector: u16,
     sectors_per_cluster: u8,
     sectors_per_fat: u32,
@@ -50,12 +50,7 @@ impl<HANDLE: VFatHandle> VFat<HANDLE> {
 
         let ebpb = BiosParameterBlock::from(&mut device, first_partition.relative_sector as u64)?;
 
-        let partition = Partition {
-            start: first_partition.relative_sector as u64,
-            num_sectors: first_partition.total_sectors_in_partition as u64,
-            sector_size: ebpb.bytes_per_sector as u64 * first_partition.total_sectors_in_partition as u64,
-        };
-        let cached_partition = CachedPartition::new(device, partition);
+        //let cached_device = CachedDevice::new(device);
 
         let rootdir_cluster = Cluster::from(ebpb.cluster_number_of_root);
 

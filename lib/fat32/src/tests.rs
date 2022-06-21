@@ -13,6 +13,7 @@ use crate::vfat;
 
 use mbr::{MasterBootRecord, PartitionEntry, CHS};
 use vfat::{BiosParameterBlock, VFat, VFatHandle};
+use crate::vfat::CachedDevice;
 
 #[derive(Clone)]
 struct StdVFatHandle(Arc<Mutex<VFat<Self>>>);
@@ -474,4 +475,21 @@ fn shuffle_test() {
 
     let hash = hash_files_recursive_from(vfat, "/");
     assert_hash_eq!("mock 1 file hashes", hash, hash_for!("files-1"));
+}
+
+
+
+#[test]
+fn test_cache() {
+    let mut device = resource!("mock1.fat32.img");
+    let mut cache = CachedDevice::new(resource!("mock1.fat32.img"));
+
+    let len = device.sector_size() as usize;
+    let mut buf_device = vec![0; len];
+    let mut buf_cache = vec![0; len];
+
+    device.read_sector(1, &mut buf_device);
+    cache.read_sector(1, &mut buf_cache);
+
+    assert_eq!(buf_cache, buf_device);
 }
