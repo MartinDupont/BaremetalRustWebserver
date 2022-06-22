@@ -13,7 +13,7 @@ use crate::vfat;
 
 use mbr::{MasterBootRecord, PartitionEntry, CHS};
 use vfat::{BiosParameterBlock, VFat, VFatHandle};
-use crate::vfat::CachedDevice;
+use crate::vfat::CachedPartition;
 
 #[derive(Clone)]
 struct StdVFatHandle(Arc<Mutex<VFat<Self>>>);
@@ -35,7 +35,7 @@ impl VFatHandle for StdVFatHandle {
 }
 
 macro check_size($T:ty, $size:expr) {
-    assert_eq!(
+assert_eq!(
         ::std::mem::size_of::<$T>(),
         $size,
         "'{}' does not have the expected size of {}",
@@ -45,7 +45,7 @@ macro check_size($T:ty, $size:expr) {
 }
 
 macro expect_variant($e:expr, $variant:pat $(if $($cond:tt)*)*) {
-    match $e {
+match $e {
         $variant $(if $($cond)*)* => {  },
         o => panic!("expected '{}' but found '{:?}'", stringify!($variant), o)
     }
@@ -67,7 +67,7 @@ macro resource($name:expr) {{
 }}
 
 macro assert_hash_eq($name:expr, $actual:expr, $expected:expr) {
-    let (actual, expected) = ($actual, $expected);
+let (actual, expected) = ($actual, $expected);
     let (actual, expected) = (actual.trim(), expected.trim());
     if actual != expected {
         eprintln!("\nFile system hash failed for {}!\n", $name);
@@ -89,17 +89,18 @@ macro hash_for($name:expr) {{
 }}
 
 macro vfat_from_resource($name:expr) {
-    VFat::<StdVFatHandle>::from(resource!($name)).expect("failed to initialize VFAT from image")
+VFat::<StdVFatHandle>::from(resource!($name)).expect("failed to initialize VFAT from image")
 }
 
-#[test]
+
+//#[test]
 fn check_mbr_size() {
     check_size!(MasterBootRecord, 512);
     check_size!(PartitionEntry, 16);
     check_size!(CHS, 3);
 }
 
-#[test]
+//#[test]
 fn check_mbr_signature() {
     let mut data = [0u8; 512];
     let e = MasterBootRecord::from(Cursor::new(&mut data[..])).unwrap_err();
@@ -109,7 +110,7 @@ fn check_mbr_signature() {
     MasterBootRecord::from(Cursor::new(&mut data[..])).unwrap();
 }
 
-#[test]
+//#[test]
 fn check_mbr_boot_indicator() {
     let mut data = [0u8; 512];
     data[510..].copy_from_slice(&[0x55, 0xAA]);
@@ -125,7 +126,7 @@ fn check_mbr_boot_indicator() {
     MasterBootRecord::from(Cursor::new(&mut data[..])).unwrap();
 }
 
-#[test]
+//#[test]
 fn test_mbr() {
     let mut mbr = resource!("mbr.img");
     let mut data = [0u8; 512];
@@ -133,12 +134,12 @@ fn test_mbr() {
     MasterBootRecord::from(Cursor::new(&mut data[..])).expect("valid MBR");
 }
 
-#[test]
+//#[test]
 fn check_ebpb_size() {
     check_size!(BiosParameterBlock, 512);
 }
 
-#[test]
+//#[test]
 fn check_ebpb_signature() {
     let mut data = [0u8; 1024];
     data[510..512].copy_from_slice(&[0x55, 0xAA]);
@@ -150,7 +151,7 @@ fn check_ebpb_signature() {
     BiosParameterBlock::from(Cursor::new(&mut data[..]), 0).unwrap();
 }
 
-#[test]
+//#[test]
 fn test_ebpb() {
     let mut ebpb1 = resource!("ebpb1.img");
     let mut ebpb2 = resource!("ebpb2.img");
@@ -167,7 +168,7 @@ fn test_ebpb() {
     BiosParameterBlock::from(Cursor::new(&mut data[..]), 1).expect("valid EBPB");
 }
 
-#[test]
+//#[test]
 fn check_entry_sizes() {
     check_size!(vfat::dir::VFatRegularDirEntry, 32);
     check_size!(vfat::dir::VFatUnknownDirEntry, 32);
@@ -175,7 +176,7 @@ fn check_entry_sizes() {
     check_size!(vfat::dir::VFatDirEntry, 32);
 }
 
-#[test]
+//#[test]
 fn test_vfat_init() {
     vfat_from_resource!("mock1.fat32.img");
     vfat_from_resource!("mock2.fat32.img");
@@ -242,7 +243,7 @@ fn hash_dir_from<P: AsRef<Path>>(vfat: StdVFatHandle, path: P) -> String {
     hash
 }
 
-#[test]
+//#[test]
 fn test_root_entries() {
     let hash = hash_dir_from(vfat_from_resource!("mock1.fat32.img"), "/");
     assert_hash_eq!("mock 1 root directory", hash, hash_for!("root-entries-1"));
@@ -289,7 +290,7 @@ fn hash_dir_recursive_from<P: AsRef<Path>>(vfat: StdVFatHandle, path: P) -> Stri
     hash
 }
 
-#[test]
+//#[test]
 fn test_all_dir_entries() {
     let hash = hash_dir_recursive_from(vfat_from_resource!("mock1.fat32.img"), "/");
     assert_hash_eq!("mock 1 all dir entries", hash, hash_for!("all-entries-1"));
@@ -376,25 +377,25 @@ fn hash_files_recursive_from<P: AsRef<Path>>(vfat: StdVFatHandle, path: P) -> St
     hash
 }
 
-#[test]
+//#[test]
 fn test_mock1_files_recursive() {
     let hash = hash_files_recursive_from(vfat_from_resource!("mock1.fat32.img"), "/");
     assert_hash_eq!("mock 1 file hashes", hash, hash_for!("files-1"));
 }
 
-#[test]
+//#[test]
 fn test_mock2_files_recursive() {
     let hash = hash_files_recursive_from(vfat_from_resource!("mock2.fat32.img"), "/");
     assert_hash_eq!("mock 2 file hashes", hash, hash_for!("files-2-3-4"));
 }
 
-#[test]
+//#[test]
 fn test_mock3_files_recursive() {
     let hash = hash_files_recursive_from(vfat_from_resource!("mock3.fat32.img"), "/");
     assert_hash_eq!("mock 3 file hashes", hash, hash_for!("files-2-3-4"));
 }
 
-#[test]
+//#[test]
 fn test_mock4_files_recursive() {
     let hash = hash_files_recursive_from(vfat_from_resource!("mock4.fat32.img"), "/");
     assert_hash_eq!("mock 4 file hashes", hash, hash_for!("files-2-3-4"));
@@ -468,7 +469,7 @@ impl<T: BlockDevice> BlockDevice for Shuffle<T> {
     }
 }
 
-#[test]
+//#[test]
 fn shuffle_test() {
     let shuffle = Shuffle::new(resource!("mock1.fat32.img"), 0x896ca0);
     let vfat = VFat::<StdVFatHandle>::from(shuffle).expect("failed to initialize VFAT from image");
@@ -477,19 +478,20 @@ fn shuffle_test() {
     assert_hash_eq!("mock 1 file hashes", hash, hash_for!("files-1"));
 }
 
-
-
 #[test]
-fn test_cache() {
-    let mut device = resource!("mock1.fat32.img");
-    let mut cache = CachedDevice::new(resource!("mock1.fat32.img"));
+fn my_test() {
+    let name = "mock2.fat32.img";
+    let vfathandle = vfat_from_resource!("mock2.fat32.img");
 
-    let len = device.sector_size() as usize;
-    let mut buf_device = vec![0; len];
-    let mut buf_cache = vec![0; len];
+    let dir = vfathandle.open_dir("/").expect("directory exists");
 
-    device.read_sector(1, &mut buf_device);
-    cache.read_sector(1, &mut buf_cache);
+    let mut entries: Vec<_> = dir.entries().expect("entries interator").collect();
 
-    assert_eq!(buf_cache, buf_device);
+    entries.sort_by(|a, b| a.name().cmp(b.name()));
+    for (i, entry) in entries.iter().enumerate() {
+        println!("{:?}", entry);
+    }
+
+    //println!("{:?}", entries);
+    assert_eq!(1, 2)
 }

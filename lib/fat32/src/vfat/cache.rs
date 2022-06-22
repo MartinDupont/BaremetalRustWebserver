@@ -21,12 +21,13 @@ pub struct Partition {
     pub sector_size: u64,
 }
 
-pub struct CachedDevice {
+pub struct CachedPartition {
     device: Box<dyn BlockDevice>,
     cache: HashMap<u64, CacheEntry>,
+    partition: Partition,
 }
 
-impl CachedDevice {
+impl CachedPartition {
     /// Creates a new `CachedPartition` that transparently caches sectors from
     /// `device` and maps physical sectors to logical sectors inside of
     /// `partition`. All reads and writes from `CacheDevice` are performed on
@@ -43,17 +44,38 @@ impl CachedDevice {
     /// # Panics
     ///
     /// Panics if the partition's sector size is < the device's sector size.
-    pub fn new<T>(device: T) -> CachedDevice
+    pub fn new<T>(device: T, partition: Partition) -> CachedPartition
         where
             T: BlockDevice + 'static,
     {
+        assert!(partition.sector_size >= device.sector_size());
+        assert!(partition.sector_size % device.sector_size() == 0);
 
-        CachedDevice {
+        CachedPartition {
             device: Box::new(device),
             cache: HashMap::new(),
+            partition: partition,
         }
     }
 
+    /// Returns the number of physical sectors that corresponds to
+    /// one logical sector.
+    fn factor(&self) -> u64 {
+        self.partition.sector_size / self.device.sector_size()
+    }
+
+    /// Maps a user's request for a sector `virt` to the physical sector.
+    /// Returns `None` if the virtual sector number is out of range.
+    fn virtual_to_physical(&self, virt: u64) -> Option<u64> {
+        if virt >= self.partition.num_sectors {
+            return None;
+        }
+
+        let physical_offset = virt * self.factor();
+        let physical_sector = self.partition.start + physical_offset;
+
+        Some(physical_sector)
+    }
 
     /// Returns a mutable reference to the cached sector `sector`. If the sector
     /// is not already cached, the sector is first read from the disk.
@@ -88,11 +110,12 @@ impl CachedDevice {
     ///
     /// Returns an error if there is an error reading the sector from the disk.
     pub fn get(&mut self, sector: u64) -> io::Result<&[u8]> {
-        let mut cache_entry = match self.cache.entry(sector) {
+        let real_sector = self.virtual_to_physical(sector).ok_or(io::Error::new(io::ErrorKind::BrokenPipe, "Not a broken pipe. virtual address is wrong"))?;
+        let mut cache_entry = match self.cache.entry(real_sector) {
             Entry::Occupied(entry) => entry.into_mut(),
             Entry::Vacant(entry) => {
                 let mut sector_data = vec![0; self.device.sector_size() as usize];
-                self.device.read_sector(sector, &mut sector_data)?;
+                self.device.read_sector(real_sector, &mut sector_data)?;
                 entry.insert(CacheEntry {
                     data: sector_data,
                     dirty: false,
@@ -106,9 +129,9 @@ impl CachedDevice {
 
 // FIXME: Implement `BlockDevice` for `CacheDevice`. The `read_sector` and
 // `write_sector` methods should only read/write from/to cached sectors.
-impl BlockDevice for CachedDevice {
+impl BlockDevice for CachedPartition {
     fn sector_size(&self) -> u64 {
-        self.device.sector_size()
+        self.partition.sector_size
     }
 
     fn read_sector(&mut self, sector: u64, buf: &mut [u8]) -> io::Result<usize> {
@@ -128,7 +151,7 @@ impl BlockDevice for CachedDevice {
     }
 }
 
-impl fmt::Debug for CachedDevice {
+impl fmt::Debug for CachedPartition {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("CachedPartition")
             .field("device", &"<block device>")
