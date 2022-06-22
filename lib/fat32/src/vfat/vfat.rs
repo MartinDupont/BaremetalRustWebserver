@@ -86,8 +86,6 @@ impl<HANDLE: VFatHandle> VFat<HANDLE> {
     ) -> io::Result<usize> {
         let sector = self.get_sector_for_cluster(cluster);
         let n_read = self.device.read_sector(sector, buf)?;
-        println!("{:?}", buf.len());
-        println!("{:?}", n_read);
 
         Ok(n_read)
     }
@@ -99,27 +97,26 @@ impl<HANDLE: VFatHandle> VFat<HANDLE> {
         start: Cluster,
         buf: &mut Vec<u8>,
     ) -> io::Result<usize> {
-        let mut fat = self.fat_entry(start)?;
         let mut cluster = start;
         let mut total: usize = 0;
+        let mut fat = self.fat_entry(cluster)?;
+        println!("Starting Cluster: {:?}", cluster);
+        println!("Starting FAT: {:?}", fat);
         loop {
-            let status = fat.status();
-            if status == Status::Free || status == Status::Bad || status == Status::Reserved {
-                return Err(io::Error::new(io::ErrorKind::Other, "Attempted to read VFAT partition which was reserved, bad, or free"));
-            }
-            // TODO: Refactor this to avoid the panic!() call.
             let mut array_buf = vec![0u8; self.bytes_per_sector as usize];
-            let bytes_read = self.read_cluster(cluster, 0, &mut array_buf)?;
-            total += bytes_read;
-            buf.extend_from_slice(&array_buf);
-
-            match status {
-                Status::Eoc(x) => { break; }
+            match fat.status() {
+                Status::Eoc(_) => { break; }
                 Status::Data(x) => {
+                    println!("Now I'm at cluster {:?}", x);
                     fat = self.fat_entry(x)?;
+                    println!("Cluster {:?} has FAT entry {:?}", x.raw(), fat);
                     cluster = x;
+                    let bytes_read = self.read_cluster(cluster, 0, &mut array_buf)?;
+                    total += bytes_read;
+                    buf.extend_from_slice(&array_buf);
+
                 }
-                _ => panic!("This code should be unreachable")
+                _ => return Err(io::Error::new(io::ErrorKind::Other, "Attempted to read VFAT partition which was reserved, bad, or free"))
             }
         }
         Ok(total)
@@ -129,13 +126,21 @@ impl<HANDLE: VFatHandle> VFat<HANDLE> {
         use core::mem::size_of;
         let fat_entries_per_sector = self.device.sector_size() as usize / size_of::<FatEntry>();
         let sector = self.fat_start_sector + cluster.raw() as u64 / (fat_entries_per_sector as u64);
+        println!("Sector : {}", sector);
         let offset = cluster.raw() as usize % (fat_entries_per_sector as usize);
         let offset_bytes = offset * size_of::<FatEntry>();
         let mut sector_data = vec![0u8; self.device.sector_size() as usize];
 
         self.device.read_sector(sector, &mut sector_data)?;
-        let mut bytes = [0; 4];
+        println!("{:?}", sector_data);
+
+        let mut bytes = [0u8; 4];
         bytes.copy_from_slice(&sector_data[offset_bytes..offset_bytes + 4]);
+
+        println!("Bytes {:?}", bytes);
+        println!("Inside FAT {:X}", FatEntry(u32::from_le_bytes(bytes)).0);
+
+
 
         Ok(FatEntry(u32::from_le_bytes(bytes)))
 

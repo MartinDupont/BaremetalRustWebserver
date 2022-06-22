@@ -13,7 +13,7 @@ use crate::vfat;
 
 use mbr::{MasterBootRecord, PartitionEntry, CHS};
 use vfat::{BiosParameterBlock, VFat, VFatHandle};
-use crate::vfat::PartitionedDevice;
+use crate::vfat::{PartitionedDevice, Partition};
 
 #[derive(Clone)]
 struct StdVFatHandle(Arc<Mutex<VFat<Self>>>);
@@ -478,6 +478,68 @@ fn shuffle_test() {
     assert_hash_eq!("mock 1 file hashes", hash, hash_for!("files-1"));
 }
 
+fn partitioned_device_testdata() -> Cursor<Vec<u8>> {
+    let mut v = vec![0; 4096];
+    for b in v[..512].iter_mut() {
+        *b = 0xAA;
+    }
+    for b in v[512..1024].iter_mut() {
+        *b = 0xBB;
+    }
+    for b in v[1024..1536].iter_mut() {
+        *b = 0xCC;
+    }
+    Cursor::new(v)
+}
+
+#[test]
+fn partitioned_device_test_1() {
+
+    let bd = partitioned_device_testdata();
+    let mut bd = PartitionedDevice::new(
+        bd,
+        Partition {
+            start: 1,
+            num_sectors: 2,
+            sector_size: 512,
+        },
+    );
+    let mut sector_data = [0; 512];
+    assert_eq!(
+        512,
+        bd.read_sector(0, &mut sector_data).expect("read_sector")
+    );
+    assert_eq!([0xBBu8; 512].to_vec(), sector_data.to_vec());
+    assert_eq!(
+        512,
+        bd.read_sector(1, &mut sector_data).expect("read_sector")
+    );
+    assert_eq!([0xCCu8; 512].to_vec(), sector_data.to_vec());
+}
+
+#[test]
+fn partitioned_device_test_2() {
+
+    let bd = partitioned_device_testdata();
+    let mut bd = PartitionedDevice::new(
+        bd,
+        Partition {
+            start: 1,
+            num_sectors: 2,
+            sector_size: 1024,
+        },
+    );
+    let mut sector_data = [0; 1024];
+    assert_eq!(
+        1024,
+        bd.read_sector(0, &mut sector_data).expect("read_sector")
+    );
+    let mut expect = vec![0xBBu8; 512];
+    expect.extend([0xCC; 512].iter());
+    assert_eq!(expect, sector_data.to_vec());
+}
+
+
 #[test]
 fn my_test() {
     let name = "mock2.fat32.img";
@@ -493,5 +555,5 @@ fn my_test() {
     }
 
     //println!("{:?}", entries);
-    assert_eq!(1, 1)
+    assert_eq!(1, 2)
 }
