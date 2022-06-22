@@ -13,7 +13,7 @@ use crate::vfat;
 
 use mbr::{MasterBootRecord, PartitionEntry, CHS};
 use vfat::{BiosParameterBlock, VFat, VFatHandle};
-use crate::vfat::CachedPartition;
+use crate::vfat::PartitionedDevice;
 
 #[derive(Clone)]
 struct StdVFatHandle(Arc<Mutex<VFat<Self>>>);
@@ -93,14 +93,14 @@ VFat::<StdVFatHandle>::from(resource!($name)).expect("failed to initialize VFAT 
 }
 
 
-//#[test]
+#[test]
 fn check_mbr_size() {
     check_size!(MasterBootRecord, 512);
     check_size!(PartitionEntry, 16);
     check_size!(CHS, 3);
 }
 
-//#[test]
+#[test]
 fn check_mbr_signature() {
     let mut data = [0u8; 512];
     let e = MasterBootRecord::from(Cursor::new(&mut data[..])).unwrap_err();
@@ -110,7 +110,7 @@ fn check_mbr_signature() {
     MasterBootRecord::from(Cursor::new(&mut data[..])).unwrap();
 }
 
-//#[test]
+#[test]
 fn check_mbr_boot_indicator() {
     let mut data = [0u8; 512];
     data[510..].copy_from_slice(&[0x55, 0xAA]);
@@ -126,7 +126,7 @@ fn check_mbr_boot_indicator() {
     MasterBootRecord::from(Cursor::new(&mut data[..])).unwrap();
 }
 
-//#[test]
+#[test]
 fn test_mbr() {
     let mut mbr = resource!("mbr.img");
     let mut data = [0u8; 512];
@@ -134,12 +134,12 @@ fn test_mbr() {
     MasterBootRecord::from(Cursor::new(&mut data[..])).expect("valid MBR");
 }
 
-//#[test]
+#[test]
 fn check_ebpb_size() {
     check_size!(BiosParameterBlock, 512);
 }
 
-//#[test]
+#[test]
 fn check_ebpb_signature() {
     let mut data = [0u8; 1024];
     data[510..512].copy_from_slice(&[0x55, 0xAA]);
@@ -151,7 +151,7 @@ fn check_ebpb_signature() {
     BiosParameterBlock::from(Cursor::new(&mut data[..]), 0).unwrap();
 }
 
-//#[test]
+#[test]
 fn test_ebpb() {
     let mut ebpb1 = resource!("ebpb1.img");
     let mut ebpb2 = resource!("ebpb2.img");
@@ -168,7 +168,7 @@ fn test_ebpb() {
     BiosParameterBlock::from(Cursor::new(&mut data[..]), 1).expect("valid EBPB");
 }
 
-//#[test]
+#[test]
 fn check_entry_sizes() {
     check_size!(vfat::dir::VFatRegularDirEntry, 32);
     check_size!(vfat::dir::VFatUnknownDirEntry, 32);
@@ -176,7 +176,7 @@ fn check_entry_sizes() {
     check_size!(vfat::dir::VFatDirEntry, 32);
 }
 
-//#[test]
+#[test]
 fn test_vfat_init() {
     vfat_from_resource!("mock1.fat32.img");
     vfat_from_resource!("mock2.fat32.img");
@@ -243,7 +243,7 @@ fn hash_dir_from<P: AsRef<Path>>(vfat: StdVFatHandle, path: P) -> String {
     hash
 }
 
-//#[test]
+#[test]
 fn test_root_entries() {
     let hash = hash_dir_from(vfat_from_resource!("mock1.fat32.img"), "/");
     assert_hash_eq!("mock 1 root directory", hash, hash_for!("root-entries-1"));
@@ -290,7 +290,7 @@ fn hash_dir_recursive_from<P: AsRef<Path>>(vfat: StdVFatHandle, path: P) -> Stri
     hash
 }
 
-//#[test]
+#[test]
 fn test_all_dir_entries() {
     let hash = hash_dir_recursive_from(vfat_from_resource!("mock1.fat32.img"), "/");
     assert_hash_eq!("mock 1 all dir entries", hash, hash_for!("all-entries-1"));
@@ -377,25 +377,25 @@ fn hash_files_recursive_from<P: AsRef<Path>>(vfat: StdVFatHandle, path: P) -> St
     hash
 }
 
-//#[test]
+#[test]
 fn test_mock1_files_recursive() {
     let hash = hash_files_recursive_from(vfat_from_resource!("mock1.fat32.img"), "/");
     assert_hash_eq!("mock 1 file hashes", hash, hash_for!("files-1"));
 }
 
-//#[test]
+#[test]
 fn test_mock2_files_recursive() {
     let hash = hash_files_recursive_from(vfat_from_resource!("mock2.fat32.img"), "/");
     assert_hash_eq!("mock 2 file hashes", hash, hash_for!("files-2-3-4"));
 }
 
-//#[test]
+#[test]
 fn test_mock3_files_recursive() {
     let hash = hash_files_recursive_from(vfat_from_resource!("mock3.fat32.img"), "/");
     assert_hash_eq!("mock 3 file hashes", hash, hash_for!("files-2-3-4"));
 }
 
-//#[test]
+#[test]
 fn test_mock4_files_recursive() {
     let hash = hash_files_recursive_from(vfat_from_resource!("mock4.fat32.img"), "/");
     assert_hash_eq!("mock 4 file hashes", hash, hash_for!("files-2-3-4"));
@@ -469,7 +469,7 @@ impl<T: BlockDevice> BlockDevice for Shuffle<T> {
     }
 }
 
-//#[test]
+#[test]
 fn shuffle_test() {
     let shuffle = Shuffle::new(resource!("mock1.fat32.img"), 0x896ca0);
     let vfat = VFat::<StdVFatHandle>::from(shuffle).expect("failed to initialize VFAT from image");
@@ -493,5 +493,5 @@ fn my_test() {
     }
 
     //println!("{:?}", entries);
-    assert_eq!(1, 2)
+    assert_eq!(1, 1)
 }

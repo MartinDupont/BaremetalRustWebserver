@@ -13,7 +13,7 @@ use shim::path::{Component, Path};
 use crate::mbr::MasterBootRecord;
 use crate::traits::{BlockDevice, FileSystem};
 use crate::util::SliceExt;
-use crate::vfat::{Attributes, BiosParameterBlock, CachedPartition, Metadata, Timestamp, Date, Time, Partition};
+use crate::vfat::{Attributes, BiosParameterBlock, PartitionedDevice, Metadata, Timestamp, Date, Time, Partition};
 use crate::vfat::{Cluster, Dir, Entry, Error, FatEntry, File, Status};
 use crate::vfat::Error::NotFormatted;
 
@@ -26,7 +26,7 @@ pub trait VFatHandle: Clone + Debug + Send + Sync {
 #[derive(Debug)]
 pub struct VFat<HANDLE: VFatHandle> {
     phantom: PhantomData<HANDLE>,
-    device: CachedPartition,
+    device: PartitionedDevice,
     bytes_per_sector: u16,
     sectors_per_cluster: u8,
     sectors_per_fat: u32,
@@ -49,6 +49,7 @@ impl<HANDLE: VFatHandle> VFat<HANDLE> {
         }
 
         let ebpb = BiosParameterBlock::from(&mut device, first_partition.relative_sector as u64)?;
+        println!("{:?}", ebpb);
 
 
         let partition = Partition {
@@ -56,7 +57,7 @@ impl<HANDLE: VFatHandle> VFat<HANDLE> {
             num_sectors: first_partition.total_sectors_in_partition as u64,
             sector_size: ebpb.bytes_per_sector as u64,
         };
-        let cached_partition = CachedPartition::new(device, partition);
+        let cached_partition = PartitionedDevice::new(device, partition);
 
         let rootdir_cluster = Cluster::from(ebpb.cluster_number_of_root);
 
@@ -84,10 +85,11 @@ impl<HANDLE: VFatHandle> VFat<HANDLE> {
         buf: &mut [u8],
     ) -> io::Result<usize> {
         let sector = self.get_sector_for_cluster(cluster);
-        let sector_data = self.device.get(sector)?;
+        let n_read = self.device.read_sector(sector, buf)?;
+        println!("{:?}", buf.len());
+        println!("{:?}", n_read);
 
-        buf.copy_from_slice(&sector_data[offset..]);
-        Ok(buf.len())
+        Ok(n_read)
     }
 
     //* A method to read all of the clusters chained from a starting cluster into a vector.
@@ -129,13 +131,11 @@ impl<HANDLE: VFatHandle> VFat<HANDLE> {
         let sector = self.fat_start_sector + cluster.raw() as u64 / (fat_entries_per_sector as u64);
         let offset = cluster.raw() as usize % (fat_entries_per_sector as usize);
         let offset_bytes = offset * size_of::<FatEntry>();
-        let sector_data = self.device.get(sector)?;
+        let mut sector_data = vec![0u8; self.device.sector_size() as usize];
+
+        self.device.read_sector(sector, &mut sector_data)?;
         let mut bytes = [0; 4];
         bytes.copy_from_slice(&sector_data[offset_bytes..offset_bytes + 4]);
-        println!("FAT start sector: {}", self.fat_start_sector);
-        println!("Sector where my cluster is: {}", sector);
-        println!("Sector data: {:?}", sector_data);
-
 
         Ok(FatEntry(u32::from_le_bytes(bytes)))
 
@@ -164,8 +164,6 @@ impl<'a, HANDLE: VFatHandle> FileSystem for &'a HANDLE {
             first_cluster: self.lock(|vfat| vfat.rootdir_cluster),
             metadata: make_root_dir_metadata(),
         };
-
-        self.lock(|vfat| { println!("Rootdir cluster: {:?}", vfat.rootdir_cluster); });
 
         let mut file: Option<File<HANDLE>> = None;
 
