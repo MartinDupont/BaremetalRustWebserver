@@ -26,7 +26,7 @@ impl FatEntry {
     /// Returns the `Status` of the FAT entry `self`.
     pub fn status(&self) -> Status {
         let masked = 0x01111111 & self.0;
-        match self.0 {
+        match self.0 & masked {
             0x00000000 => Status::Free,
             0x00000001 => Status::Reserved,
             0x00000002..=0x0FFFFFEF => Status::Data(Cluster::from(self.0)),
