@@ -64,7 +64,7 @@ impl<HANDLE: VFatHandle> VFat<HANDLE> {
         let vfat = VFat {
             phantom: Default::default(),
             device: cached_partition,
-            bytes_per_sector: ebpb.bytes_per_sector, // TODO: CHeck little endianness.
+            bytes_per_sector: ebpb.bytes_per_sector,
             sectors_per_cluster: ebpb.sectors_per_cluster,
             sectors_per_fat: ebpb.sectors_per_fat(),
             fat_start_sector: ebpb.number_reserved_sectors as u64,
@@ -97,53 +97,36 @@ impl<HANDLE: VFatHandle> VFat<HANDLE> {
         start: Cluster,
         buf: &mut Vec<u8>,
     ) -> io::Result<usize> {
-        let mut cluster = start;
-        let mut total: usize = 0;
-        let mut fat = self.fat_entry(cluster)?;
-        println!("Starting Cluster: {:?}", cluster);
-        println!("Starting FAT: {:?}", fat);
+        let mut cluster_data = vec![0u8; self.bytes_per_sector as usize];
+        let mut next = start;
+        let mut read_bytes = 0;
+        println!("Starting Cluster: {:?}", start);
         loop {
-            let mut array_buf = vec![0u8; self.bytes_per_sector as usize];
-            match fat.status() {
-                Status::Eoc(_) => { break; }
-                Status::Data(x) => {
-                    println!("Now I'm at cluster {:?}", x);
-                    fat = self.fat_entry(x)?;
-                    println!("Cluster {:?} has FAT entry {:?}", x.raw(), fat);
-                    cluster = x;
-                    let bytes_read = self.read_cluster(cluster, 0, &mut array_buf)?;
-                    total += bytes_read;
-                    buf.extend_from_slice(&array_buf);
-
-                }
-                _ => return Err(io::Error::new(io::ErrorKind::Other, "Attempted to read VFAT partition which was reserved, bad, or free"))
+            read_bytes += self.read_cluster(next, 0, &mut cluster_data)?;
+            buf.extend_from_slice(&cluster_data);
+            match self.fat_entry(next)?.status() {
+                Status::Data(cluster) => next = cluster,
+                Status::Eoc(_) => break,
+                status => return ioerr!(InvalidData, "Invalid chain fat entry"),
             }
         }
-        Ok(total)
+        Ok(read_bytes)
     }
 
     fn fat_entry(&mut self, cluster: Cluster) -> io::Result<FatEntry> {
         use core::mem::size_of;
         let fat_entries_per_sector = self.device.sector_size() as usize / size_of::<FatEntry>();
         let sector = self.fat_start_sector + cluster.raw() as u64 / (fat_entries_per_sector as u64);
-        println!("Sector : {}", sector);
         let offset = cluster.raw() as usize % (fat_entries_per_sector as usize);
         let offset_bytes = offset * size_of::<FatEntry>();
         let mut sector_data = vec![0u8; self.device.sector_size() as usize];
 
         self.device.read_sector(sector, &mut sector_data)?;
-        println!("{:?}", sector_data);
 
         let mut bytes = [0u8; 4];
         bytes.copy_from_slice(&sector_data[offset_bytes..offset_bytes + 4]);
 
-        println!("Bytes {:?}", bytes);
-        println!("Inside FAT {:X}", FatEntry(u32::from_le_bytes(bytes)).0);
-
-
-
         Ok(FatEntry(u32::from_le_bytes(bytes)))
-
     }
 }
 

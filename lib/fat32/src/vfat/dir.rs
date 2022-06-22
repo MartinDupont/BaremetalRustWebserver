@@ -22,10 +22,11 @@ pub struct Dir<HANDLE: VFatHandle> {
 pub struct DirIter<HANDLE: VFatHandle> {
     pub vfat: HANDLE,
     pub raw_entries: Vec<VFatDirEntry>,
+    pub pos: usize,
 }
 
 #[repr(C, packed)]
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub struct VFatRegularDirEntry {
     file_name: u64,
     extension: [u8; 3],
@@ -64,7 +65,7 @@ impl VFatRegularDirEntry {
 
 
 #[repr(C, packed)]
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub struct VFatLfnDirEntry {
     sequence_number: u8,
     name_characters_0: [u16; 5],
@@ -79,7 +80,7 @@ pub struct VFatLfnDirEntry {
 const_assert_size!(VFatLfnDirEntry, 32);
 
 #[repr(C, packed)]
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub struct VFatUnknownDirEntry {
     id: u8,
     reserved0: [u8; 10],
@@ -133,13 +134,12 @@ impl<HANDLE: VFatHandle> Iterator for DirIter<HANDLE> {
     // Value of 0x0F: entry is an LFN entry.
     // All other values: entry is a regular entry
 
-    // TODO: I'm probably repeating myself with name and name_u16.
     fn next(&mut self) -> Option<Self::Item> {
         let mut name = String::new();
-        let mut name_u16 = [0xffffu16; MAX_LFN_ENTRIES * LFN_ENTRY_LEN];
-        let mut last: Option<VFatDirEntry> = None;
-        while let Some(raw) = self.raw_entries.pop() {
-            last = Some(raw);
+
+        let mut value: Option<Self::Item> = None;
+
+        for raw in self.raw_entries[self.pos..].into_iter() {
             let unknown_entry = unsafe { raw.unknown };
             match unknown_entry.id {
                 0x00 => return None,
@@ -147,48 +147,38 @@ impl<HANDLE: VFatHandle> Iterator for DirIter<HANDLE> {
                 _ => {}
             }
 
-            if !unknown_entry.attributes.lfn() {
-                name = String::from("Regular entry. Please actually parse the name.") // This is also wrong but it will at least compile.
-            } else {
-                let lfn_entry = unsafe { &raw.long_filename };
-                let seq_num = ((lfn_entry.sequence_number & 0x1f) - 1) as usize;
-                assert!(seq_num < MAX_LFN_ENTRIES);
-
-                let raw_name =
-                    &mut name_u16[seq_num * LFN_ENTRY_LEN..seq_num * LFN_ENTRY_LEN + LFN_ENTRY_LEN];
-                raw_name[0..5].copy_from_slice(&lfn_entry.name_characters_0[..]);
-                raw_name[5..11].copy_from_slice(&lfn_entry.name_characters_1[..]);
-                raw_name[11..13].copy_from_slice(&lfn_entry.name_characters_2[..]);
+            if unknown_entry.attributes.lfn() {
+                continue
             }
+
+            let regular_entry = unsafe { raw.regular };
+            println!("===========================================================================");
+            println!("Entry: {:?}", regular_entry);
+            //name = String::from_utf8_lossy(&regular_entry.file_name[..] ).to_string();
+            name = String::from("filename.txt");
+
+            let first_cluster = regular_entry.first_cluster();
+            let metadata = regular_entry.make_metadata(name);
+
+            let the_value = if regular_entry.attributes.directory() {
+                Entry::Dir(Dir {
+                    vfat: self.vfat.clone(),
+                    first_cluster: first_cluster,
+                    metadata,
+                })
+            } else {
+                Entry::File(File {
+                    vfat: self.vfat.clone(),
+                    first_cluster: first_cluster,
+                    metadata,
+                })
+            };
+
+            self.pos += 1;
+            value = Some(the_value);
+            break;
         }
-
-        let regular_entry = unsafe { last?.regular };
-
-        let name_len = name_u16
-            .iter()
-            .position(|&b| b == 0x0000 || b == 0xffff)
-            .unwrap_or(name_u16.len());
-
-        name = String::from_utf16_lossy(&name_u16[..name_len]);
-
-        let first_cluster = regular_entry.first_cluster();
-
-        let metadata = regular_entry.make_metadata(name);
-
-        let value = if regular_entry.attributes.directory() {
-            Entry::Dir(Dir {
-                vfat: self.vfat.clone(),
-                first_cluster: first_cluster,
-                metadata,
-            })
-        } else {
-            Entry::File(File {
-                vfat: self.vfat.clone(),
-                first_cluster: first_cluster,
-                metadata,
-            })
-        };
-        return Some(value);
+        value
     }
 }
 
@@ -223,6 +213,7 @@ impl<HANDLE: VFatHandle> traits::Dir for Dir<HANDLE> {
         Ok(DirIter {
             vfat: self.vfat.clone(),
             raw_entries: unsafe { data.cast() },
+            pos: 0
         })
     }
 }
