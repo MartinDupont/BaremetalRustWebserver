@@ -10,20 +10,20 @@ use crate::vfat::Error::{NotFormatted, BadSignature};
 #[repr(C, packed)]
 pub struct BiosParameterBlock {
     pub jump_short_noop: [u8; 3],
-    pub oem_identifier: u64,
+    oem_identifier: [u8; 8],
     pub bytes_per_sector: u16,
     pub sectors_per_cluster: u8,
     pub number_reserved_sectors: u16,
     pub number_fats: u8,
     pub max_number_directory_entries: u16,
-    pub total_logical_sectors_16: u16,
+    total_logical_sectors_16: u16,
     pub media_descriptor_type: u8,
-    pub number_sectors_per_fat: u16,
+    number_sectors_per_fat_16: u16,
     pub number_sectors_per_track: u16,
     pub number_heads: u16,
     pub number_hidden_sectors: u32,
-    pub total_logical_sectors_32: u32,
-    pub sectors_per_fat: u32,
+    total_logical_sectors_32: u32,
+    number_sectors_per_fat_32: u32,
     pub flags: u16,
     pub fat_version_number: u16,
     pub cluster_number_of_root: u32,
@@ -37,8 +37,8 @@ pub struct BiosParameterBlock {
     // 1 Signature (should be 0x28 or 0x29).
     pub volume_id_serial_number: u32,
     // Used for tracking volumes between computers. You can ignore this if you want.
-    pub volume_label_string: [u8; 11],
-    pub system_identifier_string: u64,
+    volume_label_string: [u8; 11],
+    system_identifier_string: [u8; 8],
     // Always "FAT32   ". The spec says never to trust the tents of this string for any use.
     pub boot_code: [u8; 420],
     pub bootable_partition_signature: u16, //       2 0xAA55
@@ -72,13 +72,43 @@ impl BiosParameterBlock {
         }
         Ok(ebpb)
     }
+
+    pub fn logical_sectors(&self) -> u32 {
+        if self.total_logical_sectors_16 == 0 {
+            self.total_logical_sectors_32
+        } else {
+            self.total_logical_sectors_16 as u32
+        }
+    }
+
+    pub fn sectors_per_fat(&self) -> u32 {
+        if self.number_sectors_per_fat_16 == 0 {
+            self.number_sectors_per_fat_32
+        } else {
+            self.number_sectors_per_fat_16 as u32
+        }
+    }
+
+    pub fn oem_id(&self) -> alloc::borrow::Cow<'_, str> {
+        String::from_utf8_lossy(&self.oem_identifier)
+    }
+
+    pub fn volume_label(&self) -> alloc::borrow::Cow<'_, str> {
+        String::from_utf8_lossy(&self.volume_label_string)
+    }
+
+    pub fn system_id(&self) -> alloc::borrow::Cow<'_, str> {
+        String::from_utf8_lossy(&self.system_identifier_string)
+    }
+
+
 }
 
 impl fmt::Debug for BiosParameterBlock {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("BiosParameterBlock")
             .field("jump_short_noop", &self.jump_short_noop)
-            .field("oem_identifier", &self.oem_identifier)
+            .field("oem_identifier", &self.oem_id())
             .field("bytes_per_sector", &self.bytes_per_sector)
             .field("sectors_per_cluster", &self.sectors_per_cluster)
             .field("number_reserved_sectors", &self.number_reserved_sectors)
@@ -86,14 +116,14 @@ impl fmt::Debug for BiosParameterBlock {
             .field("max_number_directory_entries", &self.max_number_directory_entries)
             .field("total_logical_sectors_16", &self.total_logical_sectors_16)
             .field("media_descriptor_type", &self.media_descriptor_type)
-            .field("number_sectors_per_fat", &self.number_sectors_per_fat)
+            .field("number_sectors_per_fat_16", &self.number_sectors_per_fat_16)
             .field("number_sectors_per_track", &self.number_sectors_per_track)
             .field("number_heads", &self.number_heads)
             .field("number_hidden_sectors", &self.number_hidden_sectors)
             .field("total_logical_sectors_32", &self.total_logical_sectors_32)
-            .field("sectors_per_fat", &self.sectors_per_fat)
+            .field("sectors_per_fat_32", &self.number_sectors_per_fat_32)
             .field("flags", &self.flags)
-            .field("oem_id", &self.fat_version_number)
+            .field("fat_version_number", &self.fat_version_number)
             .field("cluster_number_of_root", &self.cluster_number_of_root)
             .field("sector_number_of_fs_info", &self.sector_number_of_fs_info)
             .field("sector_number_backup_boot", &self.sector_number_backup_boot)
@@ -102,8 +132,8 @@ impl fmt::Debug for BiosParameterBlock {
             .field("__reserved_flags_windows_nt", &self.__reserved_flags_windows_nt)
             .field("signature", &self.signature)
             .field("volume_id_serial_number", &self.volume_id_serial_number)
-            .field("volume_label_string", &self.volume_label_string)
-            .field("system_identifier_string", &self.system_identifier_string)
+            .field("volume_label", &self.volume_label())
+            .field("system_identifier", &self.system_id())
             //.field("boot_code", &self.boot_code)
             .finish()
     }

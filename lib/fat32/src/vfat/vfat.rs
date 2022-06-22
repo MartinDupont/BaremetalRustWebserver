@@ -50,18 +50,18 @@ impl<HANDLE: VFatHandle> VFat<HANDLE> {
 
         let ebpb = BiosParameterBlock::from(&mut device, first_partition.relative_sector as u64)?;
 
-        //let cached_device = CachedDevice::new(device);
+        let cached_device = CachedDevice::new(device);
 
         let rootdir_cluster = Cluster::from(ebpb.cluster_number_of_root);
 
         let vfat = VFat {
             phantom: Default::default(),
-            device: cached_partition,
+            device: cached_device,
             bytes_per_sector: ebpb.bytes_per_sector, // TODO: CHeck little endianness.
             sectors_per_cluster: ebpb.sectors_per_cluster,
-            sectors_per_fat: ebpb.sectors_per_fat,
-            fat_start_sector: 1 + ebpb.number_reserved_sectors as u64,
-            data_start_sector: 1 + ebpb.number_reserved_sectors as u64 + (ebpb.number_fats as u64 * ebpb.number_sectors_per_fat as u64),
+            sectors_per_fat: ebpb.sectors_per_fat(),
+            fat_start_sector: ebpb.number_reserved_sectors as u64,
+            data_start_sector: ebpb.number_reserved_sectors as u64 + (ebpb.number_fats as u64 * ebpb.sectors_per_fat() as u64),
             rootdir_cluster: rootdir_cluster,
         };
         Ok(HANDLE::new(vfat))
@@ -118,15 +118,21 @@ impl<HANDLE: VFatHandle> VFat<HANDLE> {
     }
 
     fn fat_entry(&mut self, cluster: Cluster) -> io::Result<FatEntry> {
-        let fat_entries_per_sector = self.device.sector_size() as usize / 4;
+        use core::mem::size_of;
+        let fat_entries_per_sector = self.device.sector_size() as usize / size_of::<FatEntry>();
         let sector = self.fat_start_sector + cluster.raw() as u64 / (fat_entries_per_sector as u64);
         let offset = cluster.raw() as usize % (fat_entries_per_sector as usize);
-        let offset_bytes = offset * 4;
+        let offset_bytes = offset * size_of::<FatEntry>();
         let sector_data = self.device.get(sector)?;
         let mut bytes = [0; 4];
-
         bytes.copy_from_slice(&sector_data[offset_bytes..offset_bytes + 4]);
+        println!("FAT start sector: {}", self.fat_start_sector);
+        println!("Sector where my cluster is: {}", sector);
+        println!("Sector data: {:?}", sector_data);
+
+
         Ok(FatEntry(u32::from_le_bytes(bytes)))
+
     }
 }
 
@@ -152,6 +158,8 @@ impl<'a, HANDLE: VFatHandle> FileSystem for &'a HANDLE {
             first_cluster: self.lock(|vfat| vfat.rootdir_cluster),
             metadata: make_root_dir_metadata(),
         };
+
+        self.lock(|vfat| { println!("Rootdir cluster: {:?}", vfat.rootdir_cluster); });
 
         let mut file: Option<File<HANDLE>> = None;
 
