@@ -1,7 +1,5 @@
 use crate::traits;
-use crate::vfat;
 use crate::vfat::{Dir, File, Metadata, VFatHandle};
-use core::fmt;
 
 #[derive(Debug)]
 pub enum Entry<HANDLE: VFatHandle> {
@@ -31,42 +29,42 @@ impl<HANDLE: VFatHandle> traits::Entry for Entry<HANDLE> {
     fn as_file(&self) -> Option<&<Self as traits::Entry>::File> {
         match self {
             Entry::File(x) => Some(x),
-            Entry::Dir(x) => None
+            Entry::Dir(_) => None
         }
     }
 
     fn as_dir(&self) -> Option<&<Self as traits::Entry>::Dir> {
         match self {
             Entry::Dir(x) => Some(x),
-            Entry::File(x) => None
+            Entry::File(_) => None
         }
     }
 
     fn into_file(self) -> Option<<Self as traits::Entry>::File> {
         match self {
             Entry::File(x) => Some(x),
-            Entry::Dir(x) => None
+            Entry::Dir(_) => None
         }
     }
 
     fn into_dir(self) -> Option<<Self as traits::Entry>::Dir> {
         match self {
             Entry::Dir(x) => Some(x),
-            Entry::File(x) => None
+            Entry::File(_) => None
         }
     }
 
     fn is_file(&self) -> bool {
         match self {
-            Entry::Dir(x) => false,
-            Entry::File(x) => true
+            Entry::Dir(_) => false,
+            Entry::File(_) => true
         }
     }
 
     fn is_dir(&self) -> bool {
         match self {
-            Entry::Dir(x) => true,
-            Entry::File(x) => false
+            Entry::Dir(_) => true,
+            Entry::File(_) => false
         }
     }
 }

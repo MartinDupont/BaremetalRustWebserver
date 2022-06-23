@@ -1,7 +1,6 @@
 use core::fmt;
 
 use alloc::string::String;
-use core::fmt::{Debug, Formatter};
 
 use crate::traits;
 
@@ -27,8 +26,6 @@ const ATTR_LFN: u8 = 0x0F;
 #[repr(C, packed)]
 #[derive(Default, Debug, Copy, Clone, PartialEq, Eq)]
 pub struct Attributes(pub u8);
-
-const ROOTDIR_ATTRIBUTES: Attributes = Attributes(ATTR_DIRECTORY);
 
 impl Attributes {
     pub fn raw(&self) -> u8 {

@@ -538,16 +538,3 @@ fn partitioned_device_test_2() {
     expect.extend([0xCC; 512].iter());
     assert_eq!(expect, sector_data.to_vec());
 }
-
-
-#[test]
-fn my_test() {
-    let name = "mock1.fat32.img";
-    let vfathandle = vfat_from_resource!("mock1.fat32.img");
-
-    // /NOTES/LEC2/CODE/CODE.PDF
-    let file = vfathandle.open_file("/NOTES/LEC2/CODE/code.pdf").expect("directory exists");
-
-    //println!("{:?}", entries);
-    assert_eq!(1, 1)
-}

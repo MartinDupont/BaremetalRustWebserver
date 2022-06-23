@@ -6,13 +6,10 @@ use alloc::vec::Vec;
 
 use shim::io;
 use shim::ioerr;
-use shim::newioerr;
-use shim::path;
 use shim::path::{Component, Path};
 
 use crate::mbr::MasterBootRecord;
 use crate::traits::{BlockDevice, FileSystem};
-use crate::util::SliceExt;
 use crate::vfat::{Attributes, BiosParameterBlock, PartitionedDevice, Metadata, Timestamp, Date, Time, Partition};
 use crate::vfat::{Cluster, Dir, Entry, Error, FatEntry, File, Status};
 use crate::vfat::Error::NotFormatted;
@@ -81,7 +78,7 @@ impl<HANDLE: VFatHandle> VFat<HANDLE> {
     pub fn read_cluster(
         &mut self,
         cluster: Cluster,
-        offset: usize,
+        _offset: usize,
         buf: &mut [u8],
     ) -> io::Result<usize> {
         let sector = self.get_sector_for_cluster(cluster);
@@ -106,14 +103,13 @@ impl<HANDLE: VFatHandle> VFat<HANDLE> {
             match self.fat_entry(next)?.status() {
                 Status::Data(cluster) => next = cluster,
                 Status::Eoc(_) => break,
-                status => return ioerr!(InvalidData, "Invalid chain fat entry"),
+                _ => return ioerr!(InvalidData, "Invalid chain fat entry"),
             }
         }
         Ok(read_bytes)
     }
 
     fn fat_entry(&mut self, cluster: Cluster) -> io::Result<FatEntry> {
-        use core::mem::size_of;
         let fat_entries_per_sector = self.device.sector_size() as usize / size_of::<FatEntry>();
         let sector = self.fat_start_sector + cluster.raw() as u64 / (fat_entries_per_sector as u64);
         let offset = cluster.raw() as usize % (fat_entries_per_sector as usize);
@@ -159,7 +155,7 @@ impl<'a, HANDLE: VFatHandle> FileSystem for &'a HANDLE {
                 continue;
             }
             match found {
-                Entry::File(x) => { return Err(io::Error::new(io::ErrorKind::NotFound, "Not a directory")); }
+                Entry::File(_) => { return Err(io::Error::new(io::ErrorKind::NotFound, "Not a directory")); }
                 Entry::Dir(x) => {
                     found = x.find(component)?;
                 }

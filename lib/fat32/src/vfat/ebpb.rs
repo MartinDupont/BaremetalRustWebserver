@@ -58,8 +58,8 @@ impl BiosParameterBlock {
         device.read_sector(sector, &mut buf).map_err(|error| { Error::Io(error) })?;
         let ebpb = unsafe { *{ buf.as_ptr() as *const BiosParameterBlock } };
 
-        if ebpb.bootable_partition_signature != 0xAA55 {
-            println!("EBPB bootable not 0xAAFF, is instead {:#08x}", ebpb.bootable_partition_signature);
+        if *&{ ebpb.bootable_partition_signature } != 0xAA55 {
+            println!("EBPB bootable not 0xAAFF, is instead {:#08x}", *&{ ebpb.bootable_partition_signature });
             return Err(BadSignature);
         }
         // if ebpb.signature != 0x28 && ebpb.signature != 0x29 {
@@ -100,41 +100,41 @@ impl BiosParameterBlock {
     pub fn system_id(&self) -> alloc::borrow::Cow<'_, str> {
         String::from_utf8_lossy(&self.system_identifier_string)
     }
-
-
 }
 
 impl fmt::Debug for BiosParameterBlock {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.debug_struct("BiosParameterBlock")
-            .field("jump_short_noop", &self.jump_short_noop)
-            .field("oem_identifier", &self.oem_id())
-            .field("bytes_per_sector", &self.bytes_per_sector)
-            .field("sectors_per_cluster", &self.sectors_per_cluster)
-            .field("number_reserved_sectors", &self.number_reserved_sectors)
-            .field("number_fats", &self.number_fats)
-            .field("max_number_directory_entries", &self.max_number_directory_entries)
-            .field("total_logical_sectors_16", &self.total_logical_sectors_16)
-            .field("media_descriptor_type", &self.media_descriptor_type)
-            .field("number_sectors_per_fat_16", &self.number_sectors_per_fat_16)
-            .field("number_sectors_per_track", &self.number_sectors_per_track)
-            .field("number_heads", &self.number_heads)
-            .field("number_hidden_sectors", &self.number_hidden_sectors)
-            .field("total_logical_sectors_32", &self.total_logical_sectors_32)
-            .field("sectors_per_fat_32", &self.number_sectors_per_fat_32)
-            .field("flags", &self.flags)
-            .field("fat_version_number", &self.fat_version_number)
-            .field("cluster_number_of_root", &self.cluster_number_of_root)
-            .field("sector_number_of_fs_info", &self.sector_number_of_fs_info)
-            .field("sector_number_backup_boot", &self.sector_number_backup_boot)
-            .field("__reserved", &self.__reserved)
-            .field("drive_number", &self.drive_number)
-            .field("__reserved_flags_windows_nt", &self.__reserved_flags_windows_nt)
-            .field("signature", &self.signature)
-            .field("volume_id_serial_number", &self.volume_id_serial_number)
-            .field("volume_label", &self.volume_label())
-            .field("system_identifier", &self.system_id())
-            //.field("boot_code", &self.boot_code)
-            .finish()
+        unsafe {
+            f.debug_struct("BiosParameterBlock")
+                .field("jump_short_noop", &self.jump_short_noop)
+                .field("oem_identifier", &self.oem_id())
+                .field("bytes_per_sector", &self.bytes_per_sector)
+                .field("sectors_per_cluster", &self.sectors_per_cluster)
+                .field("number_reserved_sectors", &self.number_reserved_sectors)
+                .field("number_fats", &self.number_fats)
+                .field("max_number_directory_entries", &self.max_number_directory_entries)
+                .field("total_logical_sectors_16", &self.total_logical_sectors_16)
+                .field("media_descriptor_type", &self.media_descriptor_type)
+                .field("number_sectors_per_fat_16", &self.number_sectors_per_fat_16)
+                .field("number_sectors_per_track", &self.number_sectors_per_track)
+                .field("number_heads", &self.number_heads)
+                .field("number_hidden_sectors", &self.number_hidden_sectors)
+                .field("total_logical_sectors_32", &self.total_logical_sectors_32)
+                .field("sectors_per_fat_32", &self.number_sectors_per_fat_32)
+                .field("flags", &self.flags)
+                .field("fat_version_number", &self.fat_version_number)
+                .field("cluster_number_of_root", &self.cluster_number_of_root)
+                .field("sector_number_of_fs_info", &self.sector_number_of_fs_info)
+                .field("sector_number_backup_boot", &self.sector_number_backup_boot)
+                .field("__reserved", &self.__reserved)
+                .field("drive_number", &self.drive_number)
+                .field("__reserved_flags_windows_nt", &self.__reserved_flags_windows_nt)
+                .field("signature", &self.signature)
+                .field("volume_id_serial_number", &self.volume_id_serial_number)
+                .field("volume_label", &self.volume_label())
+                .field("system_identifier", &self.system_id())
+                //.field("boot_code", &self.boot_code)
+                .finish()
+        }
     }
 }

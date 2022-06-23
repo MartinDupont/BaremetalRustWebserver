@@ -1,7 +1,6 @@
 use core::fmt;
 use alloc::string::String;
 use alloc::vec::Vec;
-use core::marker::PhantomData;
 
 use shim::const_assert_size;
 use shim::ffi::OsStr;
@@ -87,8 +86,8 @@ impl VFatRegularDirEntry {
 impl fmt::Display for VFatRegularDirEntry {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "file_name: {} \n", self.make_regular_filename())?;
-        write!(f, "low_bits_cluster_number: {:?} \n", self.low_bits_cluster_number)?;
-        write!(f, "high_bits_cluster_number: {:?} \n", self.high_bits_cluster_number)
+        write!(f, "low_bits_cluster_number: {:?} \n", &{ self.low_bits_cluster_number })?;
+        write!(f, "high_bits_cluster_number: {:?} \n", &{ self.high_bits_cluster_number })
     }
 }
 
@@ -111,9 +110,9 @@ const_assert_size!(VFatLfnDirEntry, 32);
 impl fmt::Display for VFatLfnDirEntry {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut name_u16 = [0xffffu16; LFN_ENTRY_LEN];
-        name_u16[0..5].copy_from_slice(&self.name_characters_0);
-        name_u16[5..11].copy_from_slice(&self.name_characters_1);
-        name_u16[11..13].copy_from_slice(&self.name_characters_2);
+        name_u16[0..5].copy_from_slice(&{ self.name_characters_0 });
+        name_u16[5..11].copy_from_slice(&{ self.name_characters_1 });
+        name_u16[11..13].copy_from_slice(&{ self.name_characters_2 });
         let name = String::from_utf16_lossy(&name_u16[..]);
 
         write!(f, "file_name: {}, ", name)?;
@@ -170,9 +169,9 @@ fn handle_lfn_entry(lfn_entry: VFatLfnDirEntry, name_u16: &mut [u16]) {
     assert!(seq_num < MAX_LFN_ENTRIES);
     let raw_name =
         &mut name_u16[seq_num * LFN_ENTRY_LEN..seq_num * LFN_ENTRY_LEN + LFN_ENTRY_LEN];
-    raw_name[0..5].copy_from_slice(&lfn_entry.name_characters_0);
-    raw_name[5..11].copy_from_slice(&lfn_entry.name_characters_1);
-    raw_name[11..13].copy_from_slice(&lfn_entry.name_characters_2);
+    raw_name[0..5].copy_from_slice(&{ lfn_entry.name_characters_0 });
+    raw_name[5..11].copy_from_slice(&{ lfn_entry.name_characters_1 });
+    raw_name[11..13].copy_from_slice(&{ lfn_entry.name_characters_2 });
 }
 
 
@@ -180,8 +179,6 @@ impl<HANDLE: VFatHandle> Iterator for DirIter<HANDLE> {
     type Item = Entry<HANDLE>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        let mut name = String::new();
-
         let mut value: Option<Self::Item> = None;
         let mut name_u16 = [0xffffu16; MAX_LFN_ENTRIES * LFN_ENTRY_LEN];
         let mut encountered_lfn = false;

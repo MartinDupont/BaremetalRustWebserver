@@ -1,7 +1,6 @@
 use alloc::boxed::Box;
-use alloc::vec::Vec;
 use core::{cmp, fmt};
-use hashbrown::{hash_map::Entry, HashMap};
+
 use shim::io;
 
 use crate::traits::BlockDevice;
@@ -100,7 +99,7 @@ impl BlockDevice for PartitionedDevice {
         Ok(read_bytes)
     }
 
-    fn write_sector(&mut self, sector: u64, buf: &[u8]) -> io::Result<usize> {
+    fn write_sector(&mut self, _sector: u64, _buf: &[u8]) -> io::Result<usize> {
         unimplemented!()
     }
 }

@@ -1,7 +1,5 @@
-use alloc::string::String;
-
 use shim::io::{self, SeekFrom};
-use shim::{ioerr, newioerr};
+use shim::{ioerr};
 
 use crate::traits;
 use crate::vfat::{Cluster, Metadata, VFatHandle};
@@ -35,7 +33,7 @@ impl<HANDLE: VFatHandle> io::Read for File<HANDLE> {
 
         let mut data = Vec::new();
         self.vfat.lock(|vfat| -> io::Result<()> {
-            let n = vfat.read_chain(self.first_cluster, &mut data)?;
+            vfat.read_chain(self.first_cluster, &mut data)?;
             Ok(())
         })?;
 
@@ -51,7 +49,7 @@ impl<HANDLE: VFatHandle> io::Read for File<HANDLE> {
 }
 
 impl<HANDLE: VFatHandle> io::Write for File<HANDLE> {
-    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+    fn write(&mut self, _buf: &[u8]) -> io::Result<usize> {
         Ok(0)
     }
     fn flush(&mut self) -> io::Result<()> {
