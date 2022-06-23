@@ -77,11 +77,11 @@ pub struct Metadata {
 
 impl traits::Timestamp for Timestamp {
     fn year(&self) -> usize {
-        (self.date.0 >> 9) as usize
+        1980 + (self.date.0 >> 9) as usize
     }
 
     fn month(&self) -> u8 {
-        let mask = 0b0000000011100000;
+        let mask = 0b0000000111100000;
         ((self.date.0 & mask) >> 5) as u8
     }
 
@@ -91,12 +91,12 @@ impl traits::Timestamp for Timestamp {
     }
 
     fn hour(&self) -> u8 {
-        (self.date.0 >> 11) as u8
+        (self.time.0 >> 11) as u8
     }
 
     fn minute(&self) -> u8 {
         let mask = 0b0000011111100000;
-        ((self.date.0 & mask) >> 5) as u8
+        ((self.time.0 & mask) >> 5) as u8
     }
 
     fn second(&self) -> u8 {
