@@ -1,6 +1,7 @@
 use alloc::string::String;
 
 use shim::io::{self, SeekFrom};
+use shim::{ioerr, newioerr};
 
 use crate::traits;
 use crate::vfat::{Cluster, Metadata, VFatHandle};
@@ -10,6 +11,7 @@ pub struct File<HANDLE: VFatHandle> {
     pub vfat: HANDLE,
     pub metadata: Metadata,
     pub first_cluster: Cluster,
+    pub pos: usize,
 }
 
 impl<HANDLE: VFatHandle> traits::File for File<HANDLE> {
@@ -24,11 +26,26 @@ impl<HANDLE: VFatHandle> traits::File for File<HANDLE> {
 
 impl<HANDLE: VFatHandle> io::Read for File<HANDLE> {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
+
+        if self.pos as u32 == self.metadata.size {
+            return Ok(0);
+        } else if self.pos  as u32 >= self.metadata.size {
+            return ioerr!(InvalidInput, "read past the end of file");
+        }
+
+        let mut data = Vec::new();
         self.vfat.lock(|vfat| -> io::Result<()> {
-            vfat.read_cluster(self.first_cluster, 0, buf)?;
+            vfat.read_chain(self.first_cluster, &mut data)?;
             Ok(())
         })?;
-        Ok(buf.len())
+
+        let len = core::cmp::min(buf.len(), self.metadata.size as usize - self.pos);
+        buf[..len]
+            .copy_from_slice(&data[self.pos..(self.pos + len)]);
+
+        self.pos += len;
+
+        Ok(len)
     }
 }
 

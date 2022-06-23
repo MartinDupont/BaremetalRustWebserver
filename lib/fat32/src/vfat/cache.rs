@@ -83,11 +83,17 @@ impl BlockDevice for PartitionedDevice {
         let n = self.factor();
 
         for i in 0..n as usize {
+            let end = cmp::min((i + 1) * physical_sector_size, buf.len());
+
             let num = self.device.read_sector(
                 real_sector + i as u64,
-                &mut buf[i * physical_sector_size..(i + 1) * physical_sector_size],
+                &mut buf[i * physical_sector_size..end],
             )?;
             read_bytes += num;
+
+            if end == buf.len(){
+                break;
+            }
 
         }
 

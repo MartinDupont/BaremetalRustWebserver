@@ -227,6 +227,7 @@ impl<HANDLE: VFatHandle> Iterator for DirIter<HANDLE> {
                     vfat: self.vfat.clone(),
                     first_cluster: first_cluster,
                     metadata,
+                    pos: 0,
                 })
             };
 
