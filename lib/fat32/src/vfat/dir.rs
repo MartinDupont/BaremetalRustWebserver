@@ -52,13 +52,13 @@ impl VFatRegularDirEntry {
         Cluster::from(self.low_bits_cluster_number as u32 | (self.high_bits_cluster_number as u32) << 16)
     }
 
-    pub fn make_metadata(&self) -> Metadata {
+    pub fn make_metadata(&self, name: String) -> Metadata {
         Metadata {
             attributes: self.attributes,
             created_ts: Timestamp { date: self.creation_date, time: self.creation_time },
             accessed_ts: Timestamp { date: self.last_accessed_date, time: Time(0) },
             modified_ts: Timestamp { date: self.last_modification_date, time: self.last_modification_time },
-            name: self.make_regular_filename(),
+            name,
             size: self.file_size,
         }
     }
@@ -94,7 +94,7 @@ impl fmt::Display for VFatRegularDirEntry {
 
 
 #[repr(C, packed)]
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone)]
 pub struct VFatLfnDirEntry {
     sequence_number: u8,
     name_characters_0: [u16; 5],
@@ -107,6 +107,19 @@ pub struct VFatLfnDirEntry {
 }
 
 const_assert_size!(VFatLfnDirEntry, 32);
+
+impl fmt::Display for VFatLfnDirEntry {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut name_u16 = [0xffffu16; LFN_ENTRY_LEN];
+        name_u16[0..5].copy_from_slice(&self.name_characters_0);
+        name_u16[5..11].copy_from_slice(&self.name_characters_1);
+        name_u16[11..13].copy_from_slice(&self.name_characters_2);
+        let name = String::from_utf16_lossy(&name_u16[..]);
+
+        write!(f, "file_name: {}, ", name)?;
+        write!(f, "sequence_number: {:X}", self.sequence_number)
+    }
+}
 
 #[repr(C, packed)]
 #[derive(Copy, Clone, Debug)]
@@ -152,21 +165,26 @@ impl<HANDLE: VFatHandle> Dir<HANDLE> {
 const MAX_LFN_ENTRIES: usize = 0x14;
 const LFN_ENTRY_LEN: usize = 13;
 
+fn handle_lfn_entry(lfn_entry: VFatLfnDirEntry, name_u16: &mut [u16]) {
+    let seq_num = ((lfn_entry.sequence_number & 0x1f) - 1) as usize;
+    assert!(seq_num < MAX_LFN_ENTRIES);
+    let raw_name =
+        &mut name_u16[seq_num * LFN_ENTRY_LEN..seq_num * LFN_ENTRY_LEN + LFN_ENTRY_LEN];
+    raw_name[0..5].copy_from_slice(&lfn_entry.name_characters_0);
+    raw_name[5..11].copy_from_slice(&lfn_entry.name_characters_1);
+    raw_name[11..13].copy_from_slice(&lfn_entry.name_characters_2);
+}
+
+
 impl<HANDLE: VFatHandle> Iterator for DirIter<HANDLE> {
     type Item = Entry<HANDLE>;
-
-    // The first byte of an entry (whether regular or LFN) is also known as the ID.
-    // ID of 0x00. Indicates the end of the directory.
-    // ID of 0xE5: Marks an unused/deleted entry.
-    // All other IDs make up part of the file’s name or LFN sequence number.
-    // The byte at offset 11 determines whether the entry is a regular entry or an LFN entry.
-    // Value of 0x0F: entry is an LFN entry.
-    // All other values: entry is a regular entry
 
     fn next(&mut self) -> Option<Self::Item> {
         let mut name = String::new();
 
         let mut value: Option<Self::Item> = None;
+        let mut name_u16 = [0xffffu16; MAX_LFN_ENTRIES * LFN_ENTRY_LEN];
+        let mut encountered_lfn = false;
 
         for raw in self.raw_entries[self.pos..].into_iter() {
             self.pos += 1;
@@ -178,15 +196,25 @@ impl<HANDLE: VFatHandle> Iterator for DirIter<HANDLE> {
             }
 
             if unknown_entry.attributes.lfn() {
+                encountered_lfn = true;
+                let lfn_entry = unsafe { raw.long_filename };
+                handle_lfn_entry(lfn_entry, &mut name_u16);
                 continue;
             }
 
             let regular_entry = unsafe { raw.regular };
-            //println!("entry: {}", regular_entry);
-            //name = String::from_utf8_lossy(&regular_entry.file_name[..] ).to_string();
+            let name = if encountered_lfn {
+                let name_len = name_u16
+                    .iter()
+                    .position(|&b| b == 0x0000 || b == 0xffff)
+                    .unwrap_or(name_u16.len());
+                String::from_utf16_lossy(&name_u16[..name_len])
+            } else {
+                regular_entry.make_regular_filename()
+            };
 
             let first_cluster = regular_entry.first_cluster();
-            let metadata = regular_entry.make_metadata();
+            let metadata = regular_entry.make_metadata(name);
 
             let the_value = if regular_entry.attributes.directory() {
                 Entry::Dir(Dir {
