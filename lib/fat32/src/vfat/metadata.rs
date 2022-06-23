@@ -21,7 +21,7 @@ const ATTR_SYSTEM: u8 = 1 << 2;
 const ATTR_VOLUME_ID: u8 = 1 << 3;
 const ATTR_DIRECTORY: u8 = 1 << 4;
 const ATTR_ARCHIVE: u8 = 1 << 5;
-const ATTR_LFN: u8 = ATTR_READ_ONLY | ATTR_HIDDEN | ATTR_SYSTEM | ATTR_VOLUME_ID;
+const ATTR_LFN: u8 = 0x0F;
 
 /// File attributes as represented in FAT32 on-disk structures.
 #[repr(C, packed)]

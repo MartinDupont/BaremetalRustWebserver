@@ -1,3 +1,4 @@
+use core::fmt;
 use alloc::string::String;
 use alloc::vec::Vec;
 use core::marker::PhantomData;
@@ -28,7 +29,7 @@ pub struct DirIter<HANDLE: VFatHandle> {
 #[repr(C, packed)]
 #[derive(Copy, Clone, Debug)]
 pub struct VFatRegularDirEntry {
-    file_name: u64,
+    file_name: [u8; 8],
     extension: [u8; 3],
     pub attributes: Attributes,
     __reserved: u8,
@@ -51,15 +52,43 @@ impl VFatRegularDirEntry {
         Cluster::from(self.low_bits_cluster_number as u32 | (self.high_bits_cluster_number as u32) << 16)
     }
 
-    pub fn make_metadata(&self, name: String) -> Metadata {
+    pub fn make_metadata(&self) -> Metadata {
         Metadata {
             attributes: self.attributes,
             created_ts: Timestamp { date: self.creation_date, time: self.creation_time },
             accessed_ts: Timestamp { date: self.last_accessed_date, time: Time(0) },
             modified_ts: Timestamp { date: self.last_modification_date, time: self.last_modification_time },
-            name,
+            name: self.make_regular_filename(),
             size: self.file_size,
         }
+    }
+
+    pub fn make_regular_filename(&self) -> String {
+        let file_name_len = self
+            .file_name
+            .iter()
+            .position(|&b| b == 0x00 || b == 0x20)
+            .unwrap_or(self.file_name.len());
+        let file_ext_len = self
+            .extension
+            .iter()
+            .position(|&b| b == 0x00 || b == 0x20)
+            .unwrap_or(self.extension.len());
+        let mut name = String::from_utf8_lossy(&self.file_name[..file_name_len]).to_string();
+        if file_ext_len != 0 {
+            let ext = String::from_utf8_lossy(&self.extension[..file_ext_len]).to_string();
+            name += ".";
+            name += &ext;
+        }
+        name
+    }
+}
+
+impl fmt::Display for VFatRegularDirEntry {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "file_name: {} \n", self.make_regular_filename())?;
+        write!(f, "low_bits_cluster_number: {:?} \n", self.low_bits_cluster_number)?;
+        write!(f, "high_bits_cluster_number: {:?} \n", self.high_bits_cluster_number)
     }
 }
 
@@ -140,6 +169,7 @@ impl<HANDLE: VFatHandle> Iterator for DirIter<HANDLE> {
         let mut value: Option<Self::Item> = None;
 
         for raw in self.raw_entries[self.pos..].into_iter() {
+            self.pos += 1;
             let unknown_entry = unsafe { raw.unknown };
             match unknown_entry.id {
                 0x00 => return None,
@@ -148,17 +178,15 @@ impl<HANDLE: VFatHandle> Iterator for DirIter<HANDLE> {
             }
 
             if unknown_entry.attributes.lfn() {
-                continue
+                continue;
             }
 
             let regular_entry = unsafe { raw.regular };
-            println!("===========================================================================");
-            println!("Entry: {:?}", regular_entry);
+            //println!("entry: {}", regular_entry);
             //name = String::from_utf8_lossy(&regular_entry.file_name[..] ).to_string();
-            name = String::from("filename.txt");
 
             let first_cluster = regular_entry.first_cluster();
-            let metadata = regular_entry.make_metadata(name);
+            let metadata = regular_entry.make_metadata();
 
             let the_value = if regular_entry.attributes.directory() {
                 Entry::Dir(Dir {
@@ -174,7 +202,6 @@ impl<HANDLE: VFatHandle> Iterator for DirIter<HANDLE> {
                 })
             };
 
-            self.pos += 1;
             value = Some(the_value);
             break;
         }
@@ -193,27 +220,10 @@ impl<HANDLE: VFatHandle> traits::Dir for Dir<HANDLE> {
             Ok(())
         })?;
 
-        // need to conver my data into ...... something useful. I need to parse the VFATClasses here.
-        // I have already followed a chain of clusters. So I have parsed the SHIT.
-        // But how does this cluster chain relate to directories? How do I tell if something is a directory?
-
-        // How can a directory contain both directories and files?????
-
-        // Where do I convert from raw classes into the higher classes?
-
-        // I need to ask metadata.attributes to find out whether the thing I need is a subdirectory or not.
-
-        // If I know I have a directory. How do I get its children??
-
-        // Can both Directories and files have long file names????
-
-        // I still don't think I've LOADED the data yet......
-
-
         Ok(DirIter {
             vfat: self.vfat.clone(),
             raw_entries: unsafe { data.cast() },
-            pos: 0
+            pos: 0,
         })
     }
 }

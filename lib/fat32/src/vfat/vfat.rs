@@ -75,7 +75,7 @@ impl<HANDLE: VFatHandle> VFat<HANDLE> {
     }
 
     fn get_sector_for_cluster(&self, cluster: Cluster) -> u64 {
-        self.data_start_sector + (cluster.raw() as u64 * self.sectors_per_cluster as u64)
+        self.data_start_sector + (cluster.raw() as u64 - 2) * self.sectors_per_cluster as u64
     }
 
     pub fn read_cluster(
@@ -100,7 +100,6 @@ impl<HANDLE: VFatHandle> VFat<HANDLE> {
         let mut cluster_data = vec![0u8; self.bytes_per_sector as usize];
         let mut next = start;
         let mut read_bytes = 0;
-        println!("Starting Cluster: {:?}", start);
         loop {
             read_bytes += self.read_cluster(next, 0, &mut cluster_data)?;
             buf.extend_from_slice(&cluster_data);
