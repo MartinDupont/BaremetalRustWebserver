@@ -35,11 +35,12 @@ impl<HANDLE: VFatHandle> io::Read for File<HANDLE> {
 
         let mut data = Vec::new();
         self.vfat.lock(|vfat| -> io::Result<()> {
-            vfat.read_chain(self.first_cluster, &mut data)?;
+            let n = vfat.read_chain(self.first_cluster, &mut data)?;
             Ok(())
         })?;
 
-        let len = core::cmp::min(buf.len(), self.metadata.size as usize - self.pos);
+        let a = core::cmp::min(self.metadata.size as usize, data.len());
+        let len = core::cmp::min(buf.len(), a - self.pos);
         buf[..len]
             .copy_from_slice(&data[self.pos..(self.pos + len)]);
 

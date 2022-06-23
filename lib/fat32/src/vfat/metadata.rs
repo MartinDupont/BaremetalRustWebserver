@@ -149,6 +149,8 @@ impl fmt::Display for Metadata {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         use traits::Metadata;
 
+        write!(f, "name: {}, ", &self.name)?;
+        write!(f, "size: {}, ", &self.size)?;
         write!(f, "read_only: {}, ", &self.read_only())?;
         write!(f, "hidden: {}, ", &self.hidden())?;
         write!(f, "created: {}, ", &self.created())?;
