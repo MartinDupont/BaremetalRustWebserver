@@ -136,7 +136,7 @@ fn make_root_dir_metadata() -> Metadata {
         accessed_ts: Timestamp { date: Date(0), time: Time(0) },
         modified_ts: Timestamp { date: Date(0), time: Time(0) },
         name: String::from("/"),
-        size: 0
+        size: 0,
     }
 }
 
@@ -146,28 +146,26 @@ impl<'a, HANDLE: VFatHandle> FileSystem for &'a HANDLE {
     type Entry = Entry<HANDLE>;
 
     fn open<P: AsRef<Path>>(self, path: P) -> io::Result<Self::Entry> {
-        let mut dir = Dir {
+        let dir = Dir {
             vfat: self.clone(),
             first_cluster: self.lock(|vfat| vfat.rootdir_cluster),
             metadata: make_root_dir_metadata(),
         };
 
-        let mut file: Option<File<HANDLE>> = None;
+        let mut found = Entry::Dir(dir);
 
         for component in path.as_ref().components() {
             if component == Component::RootDir {
                 continue;
             }
-            if file.is_some() {
-                return Err(io::Error::new(io::ErrorKind::NotFound, "Not a directory"));
-            }
-            let found = dir.find(component)?;
-
             match found {
-                Entry::Dir(x) => { dir = x }
-                Entry::File(x) => { file = Some(x); }
+                Entry::File(x) => { return Err(io::Error::new(io::ErrorKind::NotFound, "Not a directory")); }
+                Entry::Dir(x) => {
+                    found = x.find(component)?;
+                }
             }
         }
-        Ok(Entry::Dir(dir))
+        Ok(found)
     }
+
 }
