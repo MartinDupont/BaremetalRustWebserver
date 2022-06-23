@@ -1,6 +1,7 @@
 use core::fmt::Debug;
 use core::marker::PhantomData;
 use core::mem::size_of;
+use alloc::string::String;
 
 use alloc::vec::Vec;
 
@@ -46,8 +47,6 @@ impl<HANDLE: VFatHandle> VFat<HANDLE> {
         }
 
         let ebpb = BiosParameterBlock::from(&mut device, first_partition.relative_sector as u64)?;
-        println!("{:?}", ebpb);
-
 
         let partition = Partition {
             start: first_partition.relative_sector as u64,

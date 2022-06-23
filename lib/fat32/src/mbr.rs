@@ -94,7 +94,6 @@ impl MasterBootRecord {
         device.read_sector(0, &mut buf).map_err(|error| { Error::Io(error) })?;
         let mbr = unsafe { *{ buf.as_ptr() as *const MasterBootRecord } };
         if *&{ mbr.signature } != 0xAA55 {
-            println!("MBR not 0xAAFF, is instead {:#08x}", &{ mbr.signature });
             return Err(Error::BadSignature);
         }
         for (i, table) in mbr.partition_table.iter().enumerate() {

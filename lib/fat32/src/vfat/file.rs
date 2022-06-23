@@ -4,6 +4,8 @@ use shim::{ioerr};
 use crate::traits;
 use crate::vfat::{Cluster, Metadata, VFatHandle};
 
+use alloc::vec::Vec;
+
 #[derive(Debug)]
 pub struct File<HANDLE: VFatHandle> {
     pub vfat: HANDLE,

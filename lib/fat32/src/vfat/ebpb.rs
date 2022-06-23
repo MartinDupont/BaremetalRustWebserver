@@ -1,5 +1,6 @@
 use core::fmt;
 use shim::const_assert_size;
+use alloc::string::String;
 
 use crate::traits::BlockDevice;
 use crate::vfat::Error;
@@ -59,7 +60,6 @@ impl BiosParameterBlock {
         let ebpb = unsafe { *{ buf.as_ptr() as *const BiosParameterBlock } };
 
         if *&{ ebpb.bootable_partition_signature } != 0xAA55 {
-            println!("EBPB bootable not 0xAAFF, is instead {:#08x}", *&{ ebpb.bootable_partition_signature });
             return Err(BadSignature);
         }
         // if ebpb.signature != 0x28 && ebpb.signature != 0x29 {
