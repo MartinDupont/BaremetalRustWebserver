@@ -56,6 +56,7 @@ impl Attributes {
         self.0 & ATTR_LFN == ATTR_LFN
     }
 }
+
 /// A structure containing a date and time.
 #[derive(Default, Copy, Clone, Debug, PartialEq, Eq)]
 pub struct Timestamp {
@@ -148,12 +149,10 @@ impl fmt::Display for Metadata {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         use traits::Metadata;
 
-        f.debug_struct("Metadata")
-            .field("read_only", &self.read_only())
-            .field("hidden", &self.hidden())
-            .field("created", &self.created())
-            .field("accessed", &self.accessed())
-            .field("modified", &self.modified())
-            .finish()
+        write!(f, "read_only: {}, ", &self.read_only())?;
+        write!(f, "hidden: {}, ", &self.hidden())?;
+        write!(f, "created: {}, ", &self.created())?;
+        write!(f, "accessed: {}, ", &self.accessed())?;
+        write!(f, "modified: {}, ", &self.modified())
     }
 }
