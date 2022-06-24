@@ -3,8 +3,9 @@ pub mod sd;
 use alloc::rc::Rc;
 use core::fmt::{self, Debug};
 use shim::io;
-use shim::ioerr;
+use shim::newioerr;
 use shim::path::Path;
+use crate::console::kprintln;
 
 pub use fat32::traits;
 use fat32::vfat::{Dir, Entry, File, VFat, VFatHandle};
@@ -38,6 +39,7 @@ impl VFatHandle for PiVFatHandle {
         f(&mut self.0.lock())
     }
 }
+
 pub struct FileSystem(Mutex<Option<PiVFatHandle>>);
 
 impl FileSystem {
@@ -57,9 +59,31 @@ impl FileSystem {
     ///
     /// Panics if the underlying disk or file sytem failed to initialize.
     pub unsafe fn initialize(&self) {
-        unimplemented!("FileSystem::initialize()")
+        let sd_device = Sd::new().expect("No SD card found");
+        let handle = VFat::<PiVFatHandle>::from(sd_device).expect("Could not initialize filesystem from SD device");
+        *self.0.lock() = Some(handle);
     }
 }
 
-// FIXME: Implement `fat32::traits::FileSystem` for `&FileSystem`
-impl fat32::traits::FileSystem for &FileSystem {}
+impl fat32::traits::FileSystem for &FileSystem {
+    type File = File<PiVFatHandle>;
+    type Dir = Dir<PiVFatHandle>;
+    type Entry = Entry<PiVFatHandle>;
+
+
+    fn open<P: AsRef<Path>>(self, path: P) -> io::Result<Self::Entry> {
+        self.0.lock().as_ref().unwrap().open(path)
+    }
+
+    fn open_file<P: AsRef<Path>>(self, path: P) -> io::Result<Self::File> {
+        use fat32::traits::Entry;
+        let thing = self.open(path)?;
+        thing.into_file().ok_or(newioerr!(NotFound, "Is a directory, not a file"))
+    }
+
+    fn open_dir<P: AsRef<Path>>(self, path: P) -> io::Result<Self::Dir> {
+        use fat32::traits::Entry;
+        let thing = self.open(path)?;
+        thing.into_dir().ok_or(newioerr!(NotFound, "Is a file, not a directory"))
+    }
+}
