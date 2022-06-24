@@ -7,6 +7,7 @@
 #![cfg_attr(not(test), no_std)]
 #![cfg_attr(not(test), no_main)]
 #![feature(raw_vec_internals)]
+#![feature(panic_info_message)]
 
 #[cfg(not(test))]
 mod init;

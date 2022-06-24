@@ -22,10 +22,9 @@ fn panic(_info: &PanicInfo) -> ! {
         kprintln!("FILE: {}", location.file());
         kprintln!("LINE: {}", location.line());
     }
-    if let Some(s) = _info.payload().downcast_ref::<&str>() {
+    if let Some(s) = _info.message() {
         kprintln!("MESSAGE: {}", s);
     }
-
 
     loop {}
 }
