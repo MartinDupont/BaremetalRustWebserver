@@ -3,12 +3,16 @@ mod syndrome;
 mod syscall;
 
 pub mod irq;
+
 pub use self::frame::TrapFrame;
 
 use pi::interrupt::{Controller, Interrupt};
 
 use self::syndrome::Syndrome;
 use self::syscall::handle_syscall;
+
+use crate::shell;
+use crate::console::{kprintln};
 
 #[repr(u16)]
 #[derive(Debug, PartialEq, Eq, Copy, Clone)]
@@ -41,5 +45,10 @@ pub struct Info {
 /// the trap frame for the exception.
 #[no_mangle]
 pub extern "C" fn handle_exception(info: Info, esr: u32, tf: &mut TrapFrame) {
-    unimplemented!("handle_exception");
+    let syndrome = Syndrome::from(esr);
+    if let Syndrome::Brk(v) = syndrome {
+        shell::shell("# ");
+    }
+
+    tf.ELR += 4;
 }

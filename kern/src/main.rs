@@ -24,6 +24,7 @@ pub mod allocator;
 
 extern crate alloc;
 
+use aarch64::brk;
 use console::kprintln;
 
 use pi::uart::uart_io;
@@ -44,5 +45,8 @@ fn kmain() -> ! {
     unsafe {
         ALLOCATOR.initialize();
     }
-    shell::shell("> ");
+    brk!(49);
+    loop {
+        shell::shell("> ");
+    }
 }

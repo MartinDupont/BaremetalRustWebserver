@@ -58,7 +58,7 @@ impl<'a> Command<'a> {
 
 /// Starts a shell using `prefix` as the prefix for each line. This function
 /// never returns.
-pub fn shell(prefix: &str) -> ! {
+pub fn shell(prefix: &str) -> () {
     const CMD_LEN: usize = 512;
     const ARG_LEN: usize = 64;
     kprintln!();
@@ -66,7 +66,7 @@ pub fn shell(prefix: &str) -> ! {
     kprintln!("                           Welcome to my OS                           ");
     kprintln!("======================================================================");
     kprintln!();
-    loop {
+    'outer: loop {
         let mut cmd_buf = [0u8; CMD_LEN];
         let mut arg_buf = [""; ARG_LEN];
 
@@ -91,7 +91,10 @@ pub fn shell(prefix: &str) -> ! {
                             kprintln!("error: too many arguments");
                         }
                         Ok(cmd) => {
-                            process_command(cmd);
+                            let result = process_command(cmd);
+                            if result.is_none() {
+                                break 'outer
+                            }
                         }
                     }
                     break 'cmd;
@@ -129,6 +132,9 @@ fn process_command(cmd: Command) -> Option<()> {
                 count += 1
             }
             kprint!("\n");
+        }
+        "exit" => {
+            return None;
         }
         "" => {
             kprintln!();
