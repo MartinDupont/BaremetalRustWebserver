@@ -37,6 +37,13 @@ impl Timer {
         let sec: u64 = ((chi as u64) << 32) + clo as u64;
         Duration::from_micros(sec)
     }
+
+    /// Sets up a match in timer 1 to occur `t` duration from now. If
+    /// interrupts for timer 1 are enabled and IRQs are unmasked, then a timer
+    /// interrupt will be issued in `t` duration.
+    pub fn tick_in(&mut self, t: Duration) {
+        unimplemented!()
+    }
 }
 
 /// Returns current time.
@@ -50,4 +57,11 @@ pub fn spin_sleep(t: Duration) {
     let current_time = timer.read();
     let target_time = current_time.checked_add(t).expect("Duration addition failed");
     while timer.read() <= target_time {}
+}
+
+/// Sets up a match in timer 1 to occur `t` duration from now. If
+/// interrupts for timer 1 are enabled and IRQs are unmasked, then a timer
+/// interrupt will be issued in `t` duration.
+pub fn tick_in(t: Duration) {
+    unimplemented!()
 }
