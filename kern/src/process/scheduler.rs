@@ -66,35 +66,24 @@ impl GlobalScheduler {
     /// Starts executing processes in user space using timer interrupt based
     /// preemptive scheduling. This method should not return under normal conditions.
     pub fn start(&self) -> ! {
-        let mut process = Process::new().unwrap();
-
-        let trap_frame = TrapFrame {
-            ELR: 0,
-            SPSR: 0,
-            SP: process.stack.bottom().as_u64(),
-            TPIDR: 0,
-            TTBR0: 0,
-            TTBR1: 0,
-            q: [0; 32],
-            x: [0; 30],
-            lr: 0,
-            _xzr: 0,
-        };
-
-        process.context = Box::new(trap_frame);
+        let mut tf = Box::new(TrapFrame::default());
 
         unsafe {
-            unsafe {
-                asm!("mov x0, $0
-                      mov SP, x0"
-                     :: "r"(&trap_frame)
-                     :: "volatile");
-            }
+            asm!("mov x0, $0
+                  mov sp, x0"
+                 :: "r"(tf)
+                 :: "volatile");
             asm!("bl context_restore" :::: "volatile");
-            eret()
+            asm!("adr x0, _start
+                  mov sp, x0"
+                 :::: "volatile");
+            asm!("mov x0, #0" :::: "volatile");
+            asm!("bl start_shell" :::: "volatile");
         }
+        eret();
+        loop {
 
-        loop {}
+        }
     }
 
     /// Initializes the scheduler and add userspace processes to the Scheduler
