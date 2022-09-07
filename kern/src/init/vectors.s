@@ -84,20 +84,20 @@ context_restore:
     ldp  q28, q29, [SP], #32
     ldp  q30, q31, [SP], #32
 
-    ldp  x0, x1, [SP], #32
-    ldp  x2, x3, [SP], #32
-    ldp  x4, x5, [SP], #32
-    ldp  x6, x7, [SP], #32
-    ldp  x8, x9, [SP], #32
-    ldp  x10, x11, [SP], #32
-    ldp  x12, x13, [SP], #32
-    ldp  x14, x15, [SP], #32
-    ldp  x16, x17, [SP], #32
-    ldp  x18, x19, [SP], #32
-    ldp  x20, x21, [SP], #32
-    ldp  x22, x23, [SP], #32
-    ldp  x24, x25, [SP], #32
-    ldp  x26, x27, [SP], #32
+    ldp  x0, x1, [SP], #16
+    ldp  x2, x3, [SP], #16
+    ldp  x4, x5, [SP], #16
+    ldp  x6, x7, [SP], #16
+    ldp  x8, x9, [SP], #16
+    ldp  x10, x11, [SP], #16
+    ldp  x12, x13, [SP], #16
+    ldp  x14, x15, [SP], #16
+    ldp  x16, x17, [SP], #16
+    ldp  x18, x19, [SP], #16
+    ldp  x20, x21, [SP], #16
+    ldp  x22, x23, [SP], #16
+    ldp  x24, x25, [SP], #16
+    ldp  x26, x27, [SP], #16
 
     ret
 

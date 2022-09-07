@@ -111,7 +111,7 @@ impl GlobalScheduler {
 
 #[no_mangle]
 pub extern "C" fn start_shell() {
-    shell::shell("#")
+    loop {shell::shell(">")}
 }
 
 
