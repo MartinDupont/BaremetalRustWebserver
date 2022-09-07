@@ -66,7 +66,12 @@ impl GlobalScheduler {
     /// Starts executing processes in user space using timer interrupt based
     /// preemptive scheduling. This method should not return under normal conditions.
     pub fn start(&self) -> ! {
-        let mut tf = Box::new(TrapFrame::default());
+        let process = Process::new().expect("new process");
+        let mut tf = process.context;
+        tf.ELR = start_shell as *const u64 as u64;
+        tf.SPSR = (SPSR_EL1::M & 0b0000) | SPSR_EL1::F | SPSR_EL1::I | SPSR_EL1::A | SPSR_EL1::D;
+        tf.SP = process.stack.top().as_u64();
+        tf.TPIDR = 1;
 
         unsafe {
             asm!("mov x0, $0
@@ -78,9 +83,9 @@ impl GlobalScheduler {
                   mov sp, x0"
                  :::: "volatile");
             asm!("mov x0, #0" :::: "volatile");
-            asm!("bl start_shell" :::: "volatile");
         }
         eret();
+
         loop {
 
         }
