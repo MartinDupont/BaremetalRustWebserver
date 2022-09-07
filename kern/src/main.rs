@@ -44,9 +44,6 @@ pub static IRQ: Irq = Irq::uninitialized();
 fn kmain() -> ! {
     unsafe {
         ALLOCATOR.initialize();
-    }
-    brk!(49);
-    loop {
-        shell::shell("> ");
+        SCHEDULER.start()
     }
 }

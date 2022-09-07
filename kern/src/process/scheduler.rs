@@ -8,7 +8,7 @@ use crate::mutex::Mutex;
 use crate::param::{PAGE_MASK, PAGE_SIZE, TICK, USER_IMG_BASE};
 use crate::process::{Id, Process, State};
 use crate::traps::TrapFrame;
-use crate::VMM;
+use crate::{process, shell, VMM};
 
 /// Process scheduler for the entire machine.
 #[derive(Debug)]
@@ -23,8 +23,8 @@ impl GlobalScheduler {
     /// Enter a critical region and execute the provided closure with the
     /// internal scheduler.
     pub fn critical<F, R>(&self, f: F) -> R
-    where
-        F: FnOnce(&mut Scheduler) -> R,
+        where
+            F: FnOnce(&mut Scheduler) -> R,
     {
         let mut guard = self.0.lock();
         f(guard.as_mut().expect("scheduler uninitialized"))
@@ -66,7 +66,35 @@ impl GlobalScheduler {
     /// Starts executing processes in user space using timer interrupt based
     /// preemptive scheduling. This method should not return under normal conditions.
     pub fn start(&self) -> ! {
-        unimplemented!("GlobalScheduler::start()")
+        let mut process = Process::new().unwrap();
+
+        let trap_frame = TrapFrame {
+            ELR: 0,
+            SPSR: 0,
+            SP: process.stack.bottom().as_u64(),
+            TPIDR: 0,
+            TTBR0: 0,
+            TTBR1: 0,
+            q: [0; 32],
+            x: [0; 30],
+            lr: 0,
+            _xzr: 0,
+        };
+
+        process.context = Box::new(trap_frame);
+
+        unsafe {
+            unsafe {
+                asm!("mov x0, $0
+                      mov SP, x0"
+                     :: "r"(&trap_frame)
+                     :: "volatile");
+            }
+            asm!("bl context_restore" :::: "volatile");
+            eret()
+        }
+
+        loop {}
     }
 
     /// Initializes the scheduler and add userspace processes to the Scheduler
@@ -91,6 +119,12 @@ impl GlobalScheduler {
     //     page[0..24].copy_from_slice(text);
     // }
 }
+
+#[no_mangle]
+pub extern "C" fn start_shell() {
+    shell::shell("#")
+}
+
 
 #[derive(Debug)]
 pub struct Scheduler {
@@ -145,7 +179,7 @@ impl Scheduler {
     }
 }
 
-pub extern "C" fn  test_user_process() -> ! {
+pub extern "C" fn test_user_process() -> ! {
     loop {
         let ms = 10000;
         let error: u64;

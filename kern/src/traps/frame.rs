@@ -12,6 +12,6 @@ pub struct TrapFrame {
     pub q: [u128; 32],
     pub x: [u64; 30],
     pub lr: u64,
-    _xzr: u64,
+    pub _xzr: u64,
 }
 
