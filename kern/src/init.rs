@@ -82,7 +82,7 @@ unsafe fn switch_to_el1() {
         CPACR_EL1.set(CPACR_EL1.get() | (0b11 << 20));
 
         // Set SCTLR to known state (A53: 4.3.30)
-        SCTLR_EL1.set(SCTLR_EL1::RES1);
+        SCTLR_EL1.set(SCTLR_EL1::RES1 | SCTLR_EL1::UMA);
 
         // set up exception handlers
         VBAR_EL1.set(&vectors as *const u64 as u64);

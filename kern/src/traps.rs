@@ -45,9 +45,20 @@ pub struct Info {
 /// the trap frame for the exception.
 #[no_mangle]
 pub extern "C" fn handle_exception(info: Info, esr: u32, tf: &mut TrapFrame) {
-    let syndrome = Syndrome::from(esr);
-    if let Syndrome::Brk(v) = syndrome {
-        shell::shell("# ");
-        tf.ELR += 4;
+    kprintln!("----------------");
+    kprintln!("{:?}", info);
+    match info.kind {
+        Kind::Irq => {
+            kprintln!("Got an IRQ interrupt!")
+        }
+        Kind::Synchronous => {
+            let syndrome = Syndrome::from(esr);
+            kprintln!("{:?}", syndrome);
+            if let Syndrome::Brk(v) = syndrome {
+                shell::shell("# ");
+                tf.ELR += 4;
+            }
+        }
+        _ => {}
     }
 }

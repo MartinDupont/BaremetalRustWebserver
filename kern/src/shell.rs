@@ -4,6 +4,7 @@ use shim::path::{Path, PathBuf};
 use stack_vec::StackVec;
 
 use pi::atags::Atags;
+use pi::timer;
 
 use fat32::traits::FileSystem;
 use fat32::traits::{Dir, Entry};
@@ -16,6 +17,7 @@ use shim::io::Read;
 
 use core::str;
 use core::fmt;
+use aarch64::{DAIF, SPSel};
 
 /// Error type for `Command` parse failures.
 #[derive(Debug)]
@@ -135,6 +137,32 @@ fn process_command(cmd: Command) -> Option<()> {
         }
         "exit" => {
             return None;
+        }
+        "mem" => {
+            if cmd.args.len() != 2 {
+                kprintln!("Accepts exactly one argument");
+                return Some(())
+            }
+            let mem = cmd.args[1];
+            let my_int = u64::from_str_radix(mem.trim_start_matches("0x"), 16);
+            match my_int {
+                Ok(mem_address) => {
+                    let value = unsafe { &mut *(mem_address as *mut [u32; 8]) };
+                    kprintln!("{:X?}", value)
+                },
+                Err(e) => {
+                    kprintln!("{}", e)
+                }
+
+            }
+        }
+        "ack" => unsafe {
+            timer::ack();
+            kprintln!("Acked!")
+        }
+        "daif" => unsafe {
+            let v = DAIF.get();
+            kprintln!("{:X?}", v)
         }
         "" => {
             kprintln!();
