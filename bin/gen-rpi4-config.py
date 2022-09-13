@@ -11,6 +11,7 @@ arm_64bit=1
 kernel_address=0x%x
 core_freq_min=500
 enable_gic=0
+armstub=armstub-new.bin
 """
 
 assert(len(sys.argv) == 2)
