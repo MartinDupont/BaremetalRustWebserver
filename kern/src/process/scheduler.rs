@@ -1,5 +1,6 @@
 use alloc::boxed::Box;
 use alloc::collections::vec_deque::VecDeque;
+use core::borrow::BorrowMut;
 use core::fmt;
 use pi::timer::tick_in;
 
@@ -146,7 +147,10 @@ pub struct Scheduler {
 impl Scheduler {
     /// Returns a new `Scheduler` with an empty queue.
     fn new() -> Scheduler {
-        unimplemented!("Scheduler::new()")
+        Scheduler {
+            processes: VecDeque::new(),
+            last_id: None,
+        }
     }
 
     /// Adds a process to the scheduler's queue and returns that process's ID if
@@ -157,7 +161,15 @@ impl Scheduler {
     /// It is the caller's responsibility to ensure that the first time `switch`
     /// is called, that process is executing on the CPU.
     fn add(&mut self, mut process: Process) -> Option<Id> {
-        unimplemented!("Scheduler::add()")
+        let new_id = self.last_id.unwrap_or(0) + 1;
+
+        self.last_id = Some(new_id);
+        let mut tf = &mut process.context;
+        tf.TPIDR = new_id;
+
+        self.processes.push_back(process);
+
+        Some(new_id)
     }
 
     /// Finds the currently running process, sets the current process's state
@@ -168,7 +180,15 @@ impl Scheduler {
     /// If the `processes` queue is empty or there is no current process,
     /// returns `false`. Otherwise, returns `true`.
     fn schedule_out(&mut self, new_state: State, tf: &mut TrapFrame) -> bool {
-        unimplemented!("Scheduler::schedule_out()")
+        match self.processes.pop_front() {
+            None => false,
+            Some(mut old_process) => {
+                old_process.state = new_state;
+                old_process.context = Box::new(*tf);
+                self.processes.push_back(old_process);
+                true
+            }
+        }
     }
 
     /// Finds the next process to switch to, brings the next process to the
@@ -179,7 +199,20 @@ impl Scheduler {
     /// If there is no process to switch to, returns `None`. Otherwise, returns
     /// `Some` of the next process`s process ID.
     fn switch_to(&mut self, tf: &mut TrapFrame) -> Option<Id> {
-        unimplemented!("Scheduler::switch_to()")
+        let mut old_process = self.processes.pop_front()?;
+        self.processes.push_back(old_process);
+        loop {
+            let mut process = self.processes.pop_front()?;
+            if process.is_ready() {
+                process.state = State::Running;
+                let id = tf.TPIDR;
+                process.context = Box::new(*tf);
+                self.processes.push_front(process);
+                return Some(id)
+            } else {
+                self.processes.push_back(process);
+            }
+        }
     }
 
     /// Kills currently running process by scheduling out the current process

@@ -1,7 +1,8 @@
 use alloc::boxed::Box;
+use core::borrow::{Borrow, BorrowMut};
 use shim::io;
 use shim::path::Path;
-
+use core::mem;
 use aarch64;
 
 use crate::param::*;
@@ -101,11 +102,26 @@ impl Process {
     ///
     ///     If the process is currently waiting, the corresponding event
     ///     function is polled to determine if the event being waiting for has
-    ///     occured. If it has, the state is switched to `Ready` and this
+    ///     occurred. If it has, the state is switched to `Ready` and this
     ///     function returns `true`.
     ///
     /// Returns `false` in all other cases.
     pub fn is_ready(&mut self) -> bool {
-        unimplemented!("Process::is_ready()")
+        let mut state = mem::replace(&mut self.state, State::Ready);
+        match state {
+            State::Ready => true,
+            State::Waiting(ref mut event_poll_fn) => {
+                if event_poll_fn(self) {
+                    true
+                } else {
+                    self.state = state;
+                    false
+                }
+            }
+            _ => {
+                self.state = state;
+                false
+            }
+        }
     }
 }
