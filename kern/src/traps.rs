@@ -11,7 +11,7 @@ use pi::interrupt::{Controller, Interrupt};
 use self::syndrome::Syndrome;
 use self::syscall::handle_syscall;
 
-use crate::shell;
+use crate::{IRQ, shell};
 use crate::console::{kprintln};
 
 #[repr(u16)]
@@ -49,7 +49,14 @@ pub extern "C" fn handle_exception(info: Info, esr: u32, tf: &mut TrapFrame) {
     kprintln!("{:?}", info);
     match info.kind {
         Kind::Irq => {
-            kprintln!("Got an IRQ interrupt!")
+            kprintln!("Got an IRQ interrupt!");
+            let mut controller = Controller::new();
+            for int in Interrupt::iter() {
+                if controller.is_pending(*int) {
+                    kprintln!("IRQ: {:?}", *int as u32);
+                    IRQ.invoke(*int, tf);
+                }
+            }
         }
         Kind::Synchronous => {
             let syndrome = Syndrome::from(esr);

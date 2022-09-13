@@ -11,7 +11,7 @@ use crate::mutex::Mutex;
 use crate::param::{PAGE_MASK, PAGE_SIZE, TICK, USER_IMG_BASE};
 use crate::process::{Id, Process, State};
 use crate::traps::TrapFrame;
-use crate::{process, shell, VMM};
+use crate::{IRQ, process, shell, VMM};
 
 use crate::console::{kprint, kprintln, CONSOLE};
 
@@ -71,19 +71,6 @@ impl GlobalScheduler {
     /// Starts executing processes in user space using timer interrupt based
     /// preemptive scheduling. This method should not return under normal conditions.
     pub fn start(&self) -> ! {
-        let mut controller = Controller::new();
-        controller.enable(Interrupt::Timer1);
-
-        let mut arm_local_controller = ArmLocalController::new();
-        arm_local_controller.setup();
-
-        //tick_in(TICK);
-
-        let value1 = unsafe { &mut *(0xFE003000 as *mut [u32; 8]) };
-        kprintln!("timers {:X?}", value1);
-
-        let value2 = unsafe { &mut *(0xFE00B200 as *mut [u32; 10]) };
-        kprintln!("interrupts {:X?}", value2);
 
         let process = Process::new().expect("new process");
         let mut tf = process.context;
@@ -91,6 +78,18 @@ impl GlobalScheduler {
         tf.SPSR = (SPSR_EL1::M & 0b0000) | SPSR_EL1::F | SPSR_EL1::A | SPSR_EL1::D;
         tf.SP = process.stack.top().as_u64();
         tf.TPIDR = 1;
+
+        // Setup timer interrupt
+        IRQ.register(
+            Interrupt::Timer1,
+            Box::new(|tf| {
+                kprintln!("TICK");
+                tick_in(TICK);
+            }),
+        );
+        let mut controller = Controller::new();
+        controller.enable(Interrupt::Timer1);
+        tick_in(TICK);
 
         unsafe {
             asm!("mov x0, $0
