@@ -10,6 +10,7 @@ CONFIG = """\
 arm_64bit=1
 kernel_address=0x%x
 core_freq_min=500
+enable_gic=0
 """
 
 assert(len(sys.argv) == 2)

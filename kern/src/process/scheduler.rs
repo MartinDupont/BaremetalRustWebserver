@@ -5,6 +5,7 @@ use pi::timer::tick_in;
 
 use aarch64::*;
 use pi::interrupt::{Controller, Interrupt};
+use pi::armlocal::ArmLocalController;
 
 use crate::mutex::Mutex;
 use crate::param::{PAGE_MASK, PAGE_SIZE, TICK, USER_IMG_BASE};
@@ -73,7 +74,10 @@ impl GlobalScheduler {
         let mut controller = Controller::new();
         controller.enable(Interrupt::Timer1);
 
-        tick_in(TICK);
+        let mut arm_local_controller = ArmLocalController::new();
+        arm_local_controller.setup();
+
+        //tick_in(TICK);
 
         let value1 = unsafe { &mut *(0xFE003000 as *mut [u32; 8]) };
         kprintln!("timers {:X?}", value1);
@@ -101,9 +105,8 @@ impl GlobalScheduler {
         }
         eret();
 
-        loop {
+        loop {}
 
-        }
     }
 
     /// Initializes the scheduler and add userspace processes to the Scheduler

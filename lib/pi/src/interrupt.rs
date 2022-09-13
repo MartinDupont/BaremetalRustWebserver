@@ -2,6 +2,7 @@ use crate::common::IO_BASE;
 
 use volatile::prelude::*;
 use volatile::{Volatile, ReadVolatile};
+use shim::const_assert_size;
 
 const INT_BASE: usize = IO_BASE + 0xB000 + 0x200;
 
@@ -76,16 +77,17 @@ impl From<usize> for Interrupt {
 #[repr(C)]
 #[allow(non_snake_case)]
 struct Registers {
-    IRQ_BASIC: Volatile<u32>,
-    IRQ_PENDING_1: Volatile<u32>,
-    IRQ_PENDING_2: Volatile<u32>,
-    FIQ_CONTROL: Volatile<u32>,
-    ENABLE_IRQ_1: Volatile<u32>,
-    ENABLE_IRQ_2: Volatile<u32>,
-    ENABLE_BASIC_IRQ: Volatile<u32>,
-    DISABLE_IRQ_1: Volatile<u32>,
-    DISABLE_IRQ_2: Volatile<u32>,
-    DISABLE_BASIC_IRQ: Volatile<u32>,
+    IRQ0_PENDING0: Volatile<u32>,
+    IRQ0_PENDING1: Volatile<u32>,
+    IRQ0_PENDING2: Volatile<u32>,
+    _res_0: Volatile<u32>,
+    IRQ0_SET_EN_0: Volatile<u32>,
+    IRQ0_SET_EN_1: Volatile<u32>,
+    IRQ0_SET_EN_2: Volatile<u32>,
+    _res_1: Volatile<u32>,
+    IRQ0_CLR_EN_0: Volatile<u32>,
+    IRQ0_CLR_EN_1: Volatile<u32>,
+    IRQ0_CLR_EN_2: Volatile<u32>,
 }
 
 /// An interrupt controller. Used to enable and disable interrupts as well as to
@@ -106,9 +108,9 @@ impl Controller {
     pub fn enable(&mut self, int: Interrupt) {
         let irq = int as u32;
         if irq < 32 {
-            self.registers.ENABLE_IRQ_1.write((1 << irq))
+            self.registers.IRQ0_SET_EN_0.write((1 << irq))
         } else {
-            self.registers.ENABLE_IRQ_2.write((1 << (irq - 32)))
+            self.registers.IRQ0_SET_EN_1.write((1 << (irq - 32)))
         }
     }
 
@@ -116,9 +118,9 @@ impl Controller {
     pub fn disable(&mut self, int: Interrupt) {
         let irq = int as u32;
         if irq < 32 {
-            self.registers.DISABLE_IRQ_1.write(1 << irq );
+            self.registers.IRQ0_CLR_EN_0.write(1 << irq );
         } else {
-            self.registers.DISABLE_IRQ_2.write(1 << (irq - 32) );
+            self.registers.IRQ0_CLR_EN_1.write(1 << (irq - 32) );
         }
     }
 
@@ -126,9 +128,9 @@ impl Controller {
     pub fn is_pending(&self, int: Interrupt) -> bool {
         let irq = int as u32;
         if irq < 32 {
-            self.registers.IRQ_PENDING_1.read() & (1 << irq) != 0
+            self.registers.IRQ0_PENDING0.read() & (1 << irq) != 0
         } else {
-            self.registers.IRQ_PENDING_2.read() & (1 << (irq - 32)) != 0
+            self.registers.IRQ0_PENDING1.read() & (1 << (irq - 32)) != 0
         }
     }
 }
