@@ -17,9 +17,6 @@ use shim::io::Read;
 
 use core::str;
 use core::fmt;
-use aarch64::{current_el, DAIF, SPSel};
-use pi::armlocal::ArmLocalController;
-use crate::param::TICK;
 
 /// Error type for `Command` parse failures.
 #[derive(Debug)]
@@ -151,67 +148,6 @@ fn process_command(cmd: Command) -> Option<()> {
                 Ok(mem_address) => {
                     let value = unsafe { &mut *(mem_address as *mut [u32; 8]) };
                     kprintln!("{:X?}", value)
-                },
-                Err(e) => {
-                    kprintln!("{}", e)
-                }
-
-            }
-        }
-        "ack" => unsafe {
-            timer::ack();
-            kprintln!("Acked!")
-        }
-        "tick" => unsafe {
-            timer::tick_in(TICK);
-            kprintln!("Tick set")
-        }
-        "daif" => unsafe {
-            let v = DAIF.get();
-            kprintln!("{:X?}", v)
-        }
-        "brk" => unsafe {
-            kprintln!("Brking!");
-            asm!("brk 1" :::: "volatile");
-            kprintln!("Brked.");
-        }
-        "current_el" => {
-            kprintln!("current_el: {}", unsafe { current_el() });
-        }
-        "clear_local" => {
-            let mut arm_local_controller = ArmLocalController::new();
-            arm_local_controller.clear();
-            kprintln!("cleared")
-        }
-        "set_timeout" => {
-            if cmd.args.len() != 2 {
-                kprintln!("Accepts exactly one argument");
-                return Some(())
-            }
-            let mem = cmd.args[1];
-            let my_int = u32::from_str_radix(mem.trim_start_matches("0x"), 16);
-            match my_int {
-                Ok(value) => {
-                    let mut arm_local_controller = ArmLocalController::new();
-                    arm_local_controller.set_timeout(value);
-                },
-                Err(e) => {
-                    kprintln!("{}", e)
-                }
-
-            }
-        }
-        "set_peri" => {
-            if cmd.args.len() != 2 {
-                kprintln!("Accepts exactly one argument");
-                return Some(())
-            }
-            let mem = cmd.args[1];
-            let my_int = u32::from_str_radix(mem.trim_start_matches("0x"), 16);
-            match my_int {
-                Ok(value) => {
-                    let mut arm_local_controller = ArmLocalController::new();
-                    arm_local_controller.set_peri(value);
                 },
                 Err(e) => {
                     kprintln!("{}", e)
