@@ -45,15 +45,11 @@ pub struct Info {
 /// the trap frame for the exception.
 #[no_mangle]
 pub extern "C" fn handle_exception(info: Info, esr: u32, tf: &mut TrapFrame) {
-    kprintln!("----------------");
-    kprintln!("{:?}", info);
     match info.kind {
         Kind::Irq => {
-            kprintln!("Got an IRQ interrupt!");
             let mut controller = Controller::new();
             for int in Interrupt::iter() {
                 if controller.is_pending(*int) {
-                    kprintln!("IRQ: {:?}", *int as u32);
                     IRQ.invoke(*int, tf);
                 }
             }

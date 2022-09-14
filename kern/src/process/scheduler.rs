@@ -78,7 +78,6 @@ impl GlobalScheduler {
             Interrupt::Timer1,
             Box::new(|tf| {
                 let id = SCHEDULER.switch(State::Ready, tf);
-                kprintln!("TICK, Switch to {}", id);
                 tick_in(TICK);
             }),
         );
@@ -115,15 +114,8 @@ impl GlobalScheduler {
         tf.SPSR = (SPSR_EL1::M & 0b0000) | SPSR_EL1::F | SPSR_EL1::A | SPSR_EL1::D;
         tf.SP = process1.stack.top().as_u64();
 
-        let mut process2 = Process::new().expect("new process");
-        let mut tf = &mut process2.context;
-        tf.ELR = start_shell2 as *const u64 as u64;
-        tf.SPSR = (SPSR_EL1::M & 0b0000) | SPSR_EL1::F | SPSR_EL1::A | SPSR_EL1::D;
-        tf.SP = process2.stack.top().as_u64();
-
         let mut scheduler = Scheduler::new();
         scheduler.add(process1);
-        scheduler.add(process2);
         *self.0.lock() = Some(scheduler);
     }
 
