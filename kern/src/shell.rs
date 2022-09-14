@@ -17,6 +17,7 @@ use shim::io::Read;
 
 use core::str;
 use core::fmt;
+use core::time::Duration;
 
 /// Error type for `Command` parse failures.
 #[derive(Debug)]
@@ -137,11 +138,27 @@ fn process_command(cmd: Command) -> Option<()> {
         "exit" => {
             return None;
         }
-        "mem" => {
+        "sleep" => {
             if cmd.args.len() != 2 {
                 kprintln!("Accepts exactly one argument");
                 return Some(())
             }
+            let millis = u64::from_str_radix(cmd.args[1], 10);
+            match millis {
+                Err(e) => {
+                    kprintln!("{}", e)
+                },
+                Ok(ms) => {
+                    let duration = Duration::from_millis(ms);
+                    let result = kernel_api::syscall::sleep(duration);
+                    match result {
+                        Err(e) => kprintln!("{:?}", e),
+                        Ok(d) => kprintln!("{}", d.as_millis()),
+                    };
+                }
+            }
+        }
+        "mem" => {
             let mem = cmd.args[1];
             let my_int = u64::from_str_radix(mem.trim_start_matches("0x"), 16);
             match my_int {
