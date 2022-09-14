@@ -217,20 +217,19 @@ impl Scheduler {
     /// If there is no process to switch to, returns `None`. Otherwise, returns
     /// `Some` of the next process`s process ID.
     fn switch_to(&mut self, tf: &mut TrapFrame) -> Option<Id> {
-        let mut old_process = self.processes.pop_front()?;
-        self.processes.push_back(old_process);
-        loop {
-            let mut process = self.processes.pop_front()?;
+        let mut i = 0;
+        while let Some(mut process) = self.processes.swap_remove_front(i) {
             if process.is_ready() {
                 process.state = State::Running;
-                //mem::replace(tf, *process.context);
                 *tf = *process.context;
+                let id = process.context.TPIDR;
                 self.processes.push_front(process);
-                return Some(tf.TPIDR)
-            } else {
-                self.processes.push_back(process);
+                return Some(id);
             }
+            self.processes.push_front(process);
+            i += 1;
         }
+        return None;
     }
 
     /// Kills currently running process by scheduling out the current process
