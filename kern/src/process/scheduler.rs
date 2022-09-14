@@ -1,7 +1,7 @@
 use alloc::boxed::Box;
 use alloc::collections::vec_deque::VecDeque;
 use core::borrow::BorrowMut;
-use core::fmt;
+use core::{fmt, mem};
 use pi::timer::tick_in;
 
 use aarch64::*;
@@ -13,6 +13,7 @@ use crate::param::{PAGE_MASK, PAGE_SIZE, TICK, USER_IMG_BASE};
 use crate::process::{Id, Process, State};
 use crate::traps::TrapFrame;
 use crate::{IRQ, process, shell, VMM};
+use crate::SCHEDULER;
 
 use crate::console::{kprint, kprintln, CONSOLE};
 
@@ -72,25 +73,22 @@ impl GlobalScheduler {
     /// Starts executing processes in user space using timer interrupt based
     /// preemptive scheduling. This method should not return under normal conditions.
     pub fn start(&self) -> ! {
-
-        let process = Process::new().expect("new process");
-        let mut tf = process.context;
-        tf.ELR = start_shell as *const u64 as u64;
-        tf.SPSR = (SPSR_EL1::M & 0b0000) | SPSR_EL1::F | SPSR_EL1::A | SPSR_EL1::D;
-        tf.SP = process.stack.top().as_u64();
-        tf.TPIDR = 1;
-
         // Setup timer interrupt
         IRQ.register(
             Interrupt::Timer1,
             Box::new(|tf| {
-                kprintln!("TICK");
+                let id = SCHEDULER.switch(State::Ready, tf);
+                kprintln!("TICK, Switch to {}", id);
                 tick_in(TICK);
             }),
         );
         let mut controller = Controller::new();
         controller.enable(Interrupt::Timer1);
         tick_in(TICK);
+
+        let mut tf = Box::new(TrapFrame::default());
+        self.critical(|scheduler| scheduler.switch_to(&mut tf));
+
 
         unsafe {
             asm!("mov x0, $0
@@ -111,7 +109,22 @@ impl GlobalScheduler {
 
     /// Initializes the scheduler and add userspace processes to the Scheduler
     pub unsafe fn initialize(&self) {
-        unimplemented!("GlobalScheduler::initialize()")
+        let mut process1 = Process::new().expect("new process");
+        let mut tf = &mut process1.context;
+        tf.ELR = start_shell1 as *const u64 as u64;
+        tf.SPSR = (SPSR_EL1::M & 0b0000) | SPSR_EL1::F | SPSR_EL1::A | SPSR_EL1::D;
+        tf.SP = process1.stack.top().as_u64();
+
+        let mut process2 = Process::new().expect("new process");
+        let mut tf = &mut process2.context;
+        tf.ELR = start_shell2 as *const u64 as u64;
+        tf.SPSR = (SPSR_EL1::M & 0b0000) | SPSR_EL1::F | SPSR_EL1::A | SPSR_EL1::D;
+        tf.SP = process2.stack.top().as_u64();
+
+        let mut scheduler = Scheduler::new();
+        scheduler.add(process1);
+        scheduler.add(process2);
+        *self.0.lock() = Some(scheduler);
     }
 
     // The following method may be useful for testing Phase 3:
@@ -133,8 +146,13 @@ impl GlobalScheduler {
 }
 
 #[no_mangle]
-pub extern "C" fn start_shell() {
-    loop {shell::shell(">")}
+pub extern "C" fn start_shell1() {
+    loop {shell::shell("1>")}
+}
+
+#[no_mangle]
+pub extern "C" fn start_shell2() {
+    loop {shell::shell("2>")}
 }
 
 
@@ -205,10 +223,10 @@ impl Scheduler {
             let mut process = self.processes.pop_front()?;
             if process.is_ready() {
                 process.state = State::Running;
-                let id = tf.TPIDR;
-                process.context = Box::new(*tf);
+                //mem::replace(tf, *process.context);
+                *tf = *process.context;
                 self.processes.push_front(process);
-                return Some(id)
+                return Some(tf.TPIDR)
             } else {
                 self.processes.push_back(process);
             }
@@ -219,7 +237,9 @@ impl Scheduler {
     /// as `Dead` state. Removes the dead process from the queue, drop the
     /// dead process's instance, and returns the dead process's process ID.
     fn kill(&mut self, tf: &mut TrapFrame) -> Option<Id> {
-        unimplemented!("Scheduler::kill()")
+        self.schedule_out(State::Dead, tf);
+        let process = self.processes.pop_back()?;
+        Some((*process.context).TPIDR)
     }
 }
 

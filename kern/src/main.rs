@@ -42,9 +42,11 @@ pub static VMM: VMManager = VMManager::uninitialized();
 pub static IRQ: Irq = Irq::uninitialized();
 
 fn kmain() -> ! {
-    IRQ.initialize();
     unsafe {
         ALLOCATOR.initialize();
+        SCHEDULER.initialize();
+        IRQ.initialize();
+
         SCHEDULER.start()
     }
 }
