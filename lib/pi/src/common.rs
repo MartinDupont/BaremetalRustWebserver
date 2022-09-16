@@ -1,8 +1,7 @@
 /// The address where I/O peripherals are mapped to.
 pub const IO_BASE: usize   = 0xFE00_0000;
 pub const CLOCK_HZ: u64 = 500 * 1000 * 1000;
-// TODO: IO_BASE_END not checked
-pub const IO_BASE_END: usize = 0x40000000;
+pub const IO_BASE_END: usize = 0x1_0000_0000;
 
 /// The base address of the `GPIO` registers
 pub const GPIO_BASE: usize = IO_BASE + 0x200000;

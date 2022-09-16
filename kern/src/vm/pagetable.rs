@@ -212,11 +212,17 @@ impl KernPageTable {
             let mut entry = RawL3Entry::new(0);
             entry.set_masked(addr as u64, RawL3Entry::ADDR);
             entry.set_bit(RawL3Entry::AF);
-            entry.set_value(EntrySh::ISh, RawL3Entry::SH);
             entry.set_value(EntryPerm::KERN_RW, RawL3Entry::AP);
-            entry.set_value(EntryAttr::Mem, RawL3Entry::ATTR);
             entry.set_value(EntryType::Table, RawL3Entry::TYPE);
             entry.set_bit(RawL3Entry::VALID);
+
+            if addr >= IO_BASE && addr <= IO_BASE_END {
+                entry.set_value(EntrySh::OSh, RawL3Entry::SH);
+                entry.set_value(EntryAttr::Dev, RawL3Entry::ATTR);
+            } else {
+                entry.set_value(EntrySh::ISh, RawL3Entry::SH);
+                entry.set_value(EntryAttr::Mem, RawL3Entry::ATTR);
+            }
 
             page_table.l3[pt3_number].entries[pt3_index] = L3Entry(entry);
 
