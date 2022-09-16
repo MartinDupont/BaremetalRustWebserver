@@ -5,7 +5,7 @@ use core::slice::Iter;
 use alloc::boxed::Box;
 use alloc::{fmt, vec};
 use core::alloc::{GlobalAlloc, Layout};
-
+use core::slice;
 use crate::allocator;
 use crate::param::*;
 use crate::vm::{PhysicalAddr, VirtualAddr};
@@ -176,14 +176,14 @@ impl PageTable {
     }
 }
 
-/*impl IntoIterator for &PageTable {
-    type Item = L3Entry;
-    type IntoIter =  FlatMap<Self, core::arr::IntoIter<L3Entry>, F>;
+impl<'a> IntoIterator for &'a PageTable {
+    type Item = &'a L3Entry;
+    type IntoIter = FlatMap<Iter<'a,L3PageTable>, Iter<'a, L3Entry>, fn(&L3PageTable) -> Iter<L3Entry>>;
 
     fn into_iter(self) -> Self::IntoIter {
-        return self.l3.iter().flat_map(|l| l.entries.into_iter())
+        return self.l3.iter().flat_map(|l| l.entries.iter())
     }
-}*/
+}
 
 
 pub struct KernPageTable(Box<PageTable>);
