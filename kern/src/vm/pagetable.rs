@@ -134,6 +134,15 @@ impl PageTable {
         let l2index = (raw_address & L2_INDEX_MASK) >> 29;
         let l3index = (raw_address & L3_INDEX_MASK) >> 16;
 
+        if l2index > 8 {
+            panic!("l2_index > 8: {}", l2index);
+        }
+
+        let first_bits = raw_address & 0xFFFF;
+        if first_bits != 0 {
+            panic!("virtual address is not aligned 0x{:x}", raw_address);
+        }
+
         return (l2index as usize, l3index as usize);
     }
 
@@ -142,11 +151,7 @@ impl PageTable {
     pub fn is_valid(&self, va: VirtualAddr) -> bool {
         let (l2index, l3index) = self.locate(va);
 
-        let l3_physical_address = self.l2.entries[l2index].get_value(RawL2Entry::ADDR);
-
-        let l3_page_table = unsafe { &mut *(l3_physical_address as *mut L3PageTable) };
-
-        let l3_entry = l3_page_table.entries[l3index];
+        let l3_entry = self.l3[l2index].entries[l3index];
 
         l3_entry.is_valid()
     }
@@ -162,10 +167,7 @@ impl PageTable {
     pub fn set_entry(&mut self, va: VirtualAddr, entry: RawL3Entry) -> &mut Self {
         let (l2index, l3index) = self.locate(va);
 
-        let l3_physical_address = self.l2.entries[l2index].get_value(RawL2Entry::ADDR);
-
-        let l3_page_table = unsafe { &mut *(l3_physical_address as *mut L3PageTable) };
-        l3_page_table.entries[l3index] = L3Entry(entry);
+        self.l3[l2index].entries[l3index] = L3Entry(entry);
         self
     }
 
