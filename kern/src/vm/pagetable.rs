@@ -114,10 +114,21 @@ impl PageTable {
     /// Returns a new `Box` containing `PageTable`.
     /// Entries in L2PageTable should be initialized properly before return.
     fn new(perm: u64) -> Box<PageTable> {
-        let pt = PageTable {
+        let mut pt = PageTable {
             l2: L2PageTable::new(),
             l3: [L3PageTable::new(), L3PageTable::new(), L3PageTable::new(), L3PageTable::new(), L3PageTable::new(), L3PageTable::new(), L3PageTable::new(), L3PageTable::new()],
         };
+        for i in 0..8 {
+            let addr = pt.l3[i].as_ptr();
+            let mut entry = &mut pt.l2.entries[i];
+            entry.set_masked(addr.as_u64(), RawL2Entry::ADDR);
+            entry.set_bit(RawL2Entry::AF);
+            entry.set_value(EntrySh::ISh, RawL2Entry::SH);
+            entry.set_value(perm, RawL2Entry::AP);
+            entry.set_value(EntryAttr::Mem, RawL2Entry::ATTR);
+            entry.set_value(EntryType::Table, RawL2Entry::TYPE);
+            entry.set_bit(RawL2Entry::VALID);
+        }
         Box::new(pt)
     }
 
@@ -203,7 +214,7 @@ impl KernPageTable {
         let start_address = 0x0;
         let (_, end_address) = allocator::memory_map().unwrap();
 
-        let mut page_table = PageTable::new(0);
+        let mut page_table = PageTable::new(EntryPerm::KERN_RW);
 
         for addr in (start_address..end_address).step_by(PAGE_SIZE) {
             let pt3_number = addr / (PAGE_SIZE * 8192);
@@ -254,7 +265,7 @@ impl UserPageTable {
     /// Returns a new `UserPageTable` containing a `PageTable` created with
     /// `USER_RW` permission.
     pub fn new() -> UserPageTable {
-        unimplemented!("UserPageTable::new()")
+        Self(PageTable::new(EntryPerm::USER_RW))
     }
 
     /// Allocates a page and set an L3 entry translates given virtual address to the
@@ -268,7 +279,28 @@ impl UserPageTable {
     /// TODO. use Result<T> and make it failurable
     /// TODO. use perm properly
     pub fn alloc(&mut self, va: VirtualAddr, _perm: PagePerm) -> &mut [u8] {
-        unimplemented!("alloc()");
+        if va.as_usize() < USER_IMG_BASE {
+            panic!("va < USER_IMG_BASE: 0x{:x}", va.as_u64());
+        }
+        let va_offset = va - VirtualAddr::from(USER_IMG_BASE);
+        if self.0.is_valid(va_offset) {
+            panic!("va already allocated: 0x{:x}", va.as_u64());
+        }
+        let addr = unsafe { ALLOCATOR.alloc(Page::layout()) as u64 };
+        if addr == 0 {
+            panic!("allocation failed");
+        }
+
+        let mut entry = RawL3Entry::new(0);
+        entry.set_masked(addr as u64, RawL3Entry::ADDR);
+        entry.set_bit(RawL3Entry::AF);
+        entry.set_value(EntrySh::ISh, RawL3Entry::SH);
+        entry.set_value(EntryPerm::USER_RW, RawL3Entry::AP);
+        entry.set_value(EntryAttr::Mem, RawL3Entry::ATTR);
+        entry.set_value(EntryType::Table, RawL3Entry::TYPE);
+        entry.set_bit(RawL3Entry::VALID);
+        self.0.set_entry(va_offset, entry);
+        unsafe { core::slice::from_raw_parts_mut(addr as *mut u8, PAGE_SIZE) }
     }
 }
 
@@ -300,5 +332,18 @@ impl DerefMut for UserPageTable {
     }
 }
 
-// FIXME: Implement `Drop` for `UserPageTable`.
+
+impl Drop for UserPageTable {
+    fn drop(&mut self) {
+        for entry in self.0.into_iter() {
+            if entry.is_valid() {
+                let addr = entry.get_page_addr().unwrap();
+                unsafe {
+                    ALLOCATOR.dealloc(addr.as_u64() as *mut u8, Page::layout());
+                }
+            }
+        }
+    }
+}
+
 // FIXME: Implement `fmt::Debug` as you need.
