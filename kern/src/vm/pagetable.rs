@@ -209,19 +209,27 @@ impl KernPageTable {
             let pt3_number = addr / (PAGE_SIZE * 8192);
             let pt3_index = addr % (PAGE_SIZE * 8192);
 
-            let entry_int = VALID | L3_ENTRY_TYPE | INNER_SHAREABLE | (L3_ADDRESS_MASK & addr as u64);
-            let mut the_entry = L3Entry::new(entry_int);
+            let mut entry = RawL3Entry::new(0);
+            entry.set_masked(addr as u64, RawL3Entry::ADDR);
+            entry.set_bit(RawL3Entry::AF);
+            entry.set_value(EntrySh::ISh, RawL3Entry::SH);
+            entry.set_value(EntryPerm::KERN_RW, RawL3Entry::AP);
+            entry.set_value(EntryAttr::Mem, RawL3Entry::ATTR);
+            entry.set_value(EntryType::Table, RawL3Entry::TYPE);
+            entry.set_bit(RawL3Entry::VALID);
 
-            page_table.l3[pt3_number].entries[pt3_index] = the_entry;
+            page_table.l3[pt3_number].entries[pt3_index] = L3Entry(entry);
 
-            // NOw populate the FUCKING L2.
-            let l2index = (addr as u64 & L2_INDEX_MASK) >> 29;
+            if pt3_index == 0 {
+                // Populate the l2 table
+                let l2index = (addr as u64 & L2_INDEX_MASK) >> 29;
 
-            // get base address of table
-            let l3_base = page_table.l3[pt3_number].as_ptr().as_u64();
+                // get base address of table
+                let l3_base = page_table.l3[pt3_number].as_ptr().as_u64();
 
-            let l2_entry_int = VALID | L3_ENTRY_TYPE | INNER_SHAREABLE | (l3_base << 16);
-            page_table.l2.entries[l2index as usize] = RawL2Entry::new(l2_entry_int);
+                let l2_entry_int = VALID | L3_ENTRY_TYPE | INNER_SHAREABLE | (l3_base << 16);
+                page_table.l2.entries[l2index as usize] = RawL2Entry::new(l2_entry_int);
+            }
         }
 
         return KernPageTable(page_table);
