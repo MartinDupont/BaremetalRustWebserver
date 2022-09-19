@@ -38,7 +38,7 @@ impl Page {
 }
 
 #[repr(C)]
-//#[repr(align(65536))]
+#[repr(align(65536))]
 pub struct L2PageTable {
     pub entries: [RawL2Entry; 8192],
 }
@@ -83,7 +83,7 @@ impl L3Entry {
 }
 
 #[repr(C)]
-//#[repr(align(65536))]
+#[repr(align(65536))]
 pub struct L3PageTable {
     pub entries: [L3Entry; 8192],
 }
@@ -104,7 +104,7 @@ impl L3PageTable {
 }
 
 #[repr(C)]
-//#[repr(align(65536))]
+#[repr(align(65536))]
 pub struct PageTable {
     pub l2: L2PageTable,
     pub l3: [L3PageTable; 2],
@@ -113,12 +113,11 @@ pub struct PageTable {
 impl PageTable {
     /// Returns a new `Box` containing `PageTable`.
     /// Entries in L2PageTable should be initialized properly before return.
-    pub(crate) fn new(perm: u64) -> Box<PageTable> {
-        let mut pt = PageTable {
+    fn new(perm: u64) -> Box<PageTable> {
+        let mut pt = Box::new(PageTable {
             l2: L2PageTable::new(),
             l3: [L3PageTable::new(), L3PageTable::new()],
-        };
-        kprintln!("Initializing PageTable");
+        });
         for i in 0..2 {
             let addr = pt.l3[i].as_ptr();
             let mut entry = &mut pt.l2.entries[i];
@@ -130,8 +129,7 @@ impl PageTable {
             entry.set_value(EntryType::Table, RawL2Entry::TYPE);
             entry.set_bit(RawL2Entry::VALID);
         }
-        kprintln!("Finished populating the L2 table");
-        Box::new(pt)
+        pt
     }
 
     /// Returns the (L2index, L3index) extracted from the given virtual address.
