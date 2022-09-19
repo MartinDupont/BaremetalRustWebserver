@@ -250,6 +250,7 @@ pub extern "C" fn test_user_process() -> ! {
                  : "x0", "x7"
                  : "volatile");
         }
+        kprintln!("Done with waiting for this round")
     }
 }
 
