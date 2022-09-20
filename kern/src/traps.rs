@@ -64,8 +64,8 @@ pub extern "C" fn handle_exception(info: Info, esr: u32, tf: &mut TrapFrame) {
                 },
                 Syndrome::Svc(v) => {
                     handle_syscall(v, tf);
-                }
-                _ => {}
+                },
+                _ => {loop{}}
             }
         }
         _ => {}

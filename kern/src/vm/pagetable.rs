@@ -80,6 +80,10 @@ impl L3Entry {
         }
         None
     }
+
+    pub fn get_value(&self) -> u64 {
+        self.0.get()
+    }
 }
 
 #[repr(C)]
@@ -107,7 +111,7 @@ impl L3PageTable {
 #[repr(align(65536))]
 pub struct PageTable {
     pub l2: L2PageTable,
-    pub l3: [L3PageTable; 2],
+    pub l3: Box<[L3PageTable]>,
 }
 
 impl PageTable {
@@ -116,9 +120,9 @@ impl PageTable {
     fn new(perm: u64) -> Box<PageTable> {
         let mut pt = Box::new(PageTable {
             l2: L2PageTable::new(),
-            l3: [L3PageTable::new(), L3PageTable::new()],
+            l3: vec![L3PageTable::new(), L3PageTable::new(), L3PageTable::new(), L3PageTable::new(), L3PageTable::new(), L3PageTable::new(), L3PageTable::new(), L3PageTable::new()].into_boxed_slice(),
         });
-        for i in 0..2 {
+        for i in 0..8 {
             let addr = pt.l3[i].as_ptr();
             let mut entry = &mut pt.l2.entries[i];
             entry.set_masked(addr.as_u64(), RawL2Entry::ADDR);
@@ -145,7 +149,7 @@ impl PageTable {
         let l2index = (raw_address & L2_INDEX_MASK) >> 29;
         let l3index = (raw_address & L3_INDEX_MASK) >> 16;
 
-        if l2index > 2 {
+        if l2index > 7 {
             panic!("l2_index > 8: {}", l2index);
         }
 
@@ -187,6 +191,18 @@ impl PageTable {
     pub fn get_baddr(&self) -> PhysicalAddr {
         self.l2.as_ptr()
     }
+
+    pub fn debug_addr(&self, addr : VirtualAddr) {
+        let (l2_index, l3_index ) = self.locate(addr);
+        kprintln!("l2 {:X?}, l3 {:X?}", l2_index, l3_index);
+
+        let thing = self.l3[l2_index].entries[l3_index];
+        let addr_prefix = thing.get_value();
+        kprintln!("address prefix {:X?}", addr_prefix);
+        let mapped_addr = (thing.0.get_value(RawL3Entry::ADDR) << 16) | (addr.as_u64() & 0xFFFF);
+        kprintln!("mapped address: {:X?}", mapped_addr)
+
+    }
 }
 
 impl<'a> IntoIterator for &'a PageTable {
@@ -211,10 +227,8 @@ impl KernPageTable {
     /// as address[47:16]. Refer to the definition of `RawL3Entry` in `vmsa.rs` for
     /// more details.
     pub fn new() -> KernPageTable {
-        kprintln!("Making a new KernPageTable");
         let start_address = 0x0;
         let (_, end_address) = allocator::memory_map().unwrap();
-        kprintln!("Got memory map!");
 
         let mut page_table = PageTable::new(EntryPerm::KERN_RW);
 
@@ -240,6 +254,10 @@ impl KernPageTable {
         }
 
         return KernPageTable(page_table);
+    }
+
+    pub fn debug_addr(&self, addr : VirtualAddr) {
+        self.0.debug_addr(addr);
     }
 }
 
@@ -292,6 +310,10 @@ impl UserPageTable {
         self.0.set_entry(va_offset, entry);
         unsafe { core::slice::from_raw_parts_mut(addr as *mut u8, PAGE_SIZE) }
     }
+
+    pub fn debug_addr(&self, addr : VirtualAddr) {
+        self.0.debug_addr(addr);
+    }
 }
 
 impl Deref for KernPageTable {
@@ -339,6 +361,19 @@ impl Drop for UserPageTable {
 impl fmt::Debug for UserPageTable {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         writeln!(f, "UserPageTable {{")?;
+        for entry in self.0.into_iter() {
+            if entry.is_valid() {
+                writeln!(f, "  0x{:08x}", entry.get_page_addr().unwrap().as_u64())?;
+            }
+        }
+        write!(f, "}}")?;
+        Ok(())
+    }
+}
+
+impl fmt::Debug for KernPageTable {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        writeln!(f, "KernelPageTable {{")?;
         for entry in self.0.into_iter() {
             if entry.is_valid() {
                 writeln!(f, "  0x{:08x}", entry.get_page_addr().unwrap().as_u64())?;
