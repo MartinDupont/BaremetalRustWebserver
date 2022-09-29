@@ -6,8 +6,6 @@ use pi::timer::tick_in;
 use alloc::vec::Vec;
 
 use core::ffi::c_void;
-use core::fmt;
-use core::mem;
 use core::time::Duration;
 
 use aarch64::*;
@@ -23,7 +21,7 @@ use crate::percore::{get_preemptive_counter, is_mmu_ready, local_irq};
 use crate::process::{Id, Process, State};
 use crate::traps::irq::IrqHandlerRegistry;
 use crate::traps::TrapFrame;
-use crate::{IRQ, process, shell, VMM};
+use crate::{GLOBAL_IRQ, process, shell, VMM};
 use crate::SCHEDULER;
 
 use crate::console::{kprint, kprintln, CONSOLE};
@@ -77,11 +75,11 @@ impl GlobalScheduler {
                     "[core-{}] switch_to {:?}, pc: {:x}, lr: {:x}, x29: {:x}, x28: {:x}, x27: {:x}",
                     affinity(),
                     id,
-                    tf.elr,
-                    tf.xs[30],
-                    tf.xs[29],
-                    tf.xs[28],
-                    tf.xs[27]
+                    tf.ELR,
+                    tf.lr,
+                    tf.x[29],k
+                    tf.x[28],
+                    tf.x[27]
                 );
                 return id;
             }
@@ -101,17 +99,6 @@ impl GlobalScheduler {
     /// preemptive scheduling. This method should not return under normal
     /// conditions.
     pub fn start(&self) -> ! {
-        // Setup timer interrupt
-        IRQ.register(
-            Interrupt::Timer1,
-            Box::new(|tf| {
-                let id = SCHEDULER.switch(State::Ready, tf);
-                tick_in(TICK);
-            }),
-        );
-        let mut controller = Controller::new();
-        controller.enable(Interrupt::Timer1);
-        tick_in(TICK);
 
         let mut tf = Box::new(TrapFrame::default());
         self.critical(|scheduler| scheduler.switch_to(&mut tf));
@@ -127,8 +114,8 @@ impl GlobalScheduler {
                   mov sp, x0"
                  :::: "volatile");
             asm!("mov x0, #0" :::: "volatile");
+            eret();
         }
-        eret();
 
         loop {}
 
@@ -143,7 +130,17 @@ impl GlobalScheduler {
     /// Registers a timer handler with `Usb::start_kernel_timer` which will
     /// invoke `poll_ethernet` after 1 second.
     pub fn initialize_global_timer_interrupt(&self) {
-        unimplemented!("initialize_global_timer_interrupt()")
+        // Setup timer interrupt
+        GLOBAL_IRQ.register(
+            Interrupt::Timer1,
+            Box::new(|tf| {
+                let id = SCHEDULER.switch(State::Ready, tf);
+                tick_in(TICK);
+            }),
+        );
+        let mut controller = Controller::new();
+        controller.enable(Interrupt::Timer1);
+        tick_in(TICK);
     }
 
     /// Initializes the per-core local timer interrupt with `pi::local_interrupt`.
@@ -178,7 +175,7 @@ impl GlobalScheduler {
         let mut scheduler = Scheduler::new();
         scheduler.add(process1);
         //scheduler.add(process2);
-        *self.0.lock() = Some(scheduler);
+        *self.0.lock() = Some(Box::new(scheduler));
     }
 
     // The following method may be useful for testing Phase 3:
@@ -313,7 +310,7 @@ impl Scheduler {
     /// Panics if the search fails.
     pub fn find_process(&mut self, tf: &TrapFrame) -> &mut Process {
         for i in 0..self.processes.len() {
-            if self.processes[i].context.tpidr == tf.tpidr {
+            if self.processes[i].context.TPIDR == tf.TPIDR {
                 return &mut self.processes[i];
             }
         }
@@ -329,7 +326,7 @@ impl fmt::Debug for Scheduler {
             write!(
                 f,
                 "    queue[{}]: proc({:3})-{:?} \n",
-                i, self.processes[i].context.tpidr, self.processes[i].state
+                i, self.processes[i].context.TPIDR, self.processes[i].state
             )?;
         }
         Ok(())

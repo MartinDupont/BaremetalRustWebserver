@@ -14,7 +14,7 @@ use self::syscall::handle_syscall;
 use crate::percore;
 use crate::traps::irq::IrqHandlerRegistry;
 
-use crate::{IRQ, shell};
+use crate::{GLOBAL_IRQ, shell};
 use crate::console::{kprintln};
 
 #[repr(u16)]
@@ -52,8 +52,8 @@ pub extern "C" fn handle_exception(info: Info, esr: u32, tf: &mut TrapFrame) {
         Kind::Irq => {
             let mut controller = Controller::new();
             for int in Interrupt::iter() {
-                if controller.is_pending(*int) {
-                    IRQ.invoke(*int, tf);
+                if controller.is_pending(int) {
+                    GLOBAL_IRQ.invoke(int, tf);
                 }
             }
         }

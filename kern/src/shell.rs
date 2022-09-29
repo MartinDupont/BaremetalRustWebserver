@@ -1,10 +1,5 @@
 use shim::io;
-use shim::path::{Path, PathBuf};
-
 use stack_vec::StackVec;
-
-use pi::atags::Atags;
-use pi::timer;
 
 use fat32::traits::FileSystem;
 use fat32::traits::{Dir, Entry};
@@ -60,7 +55,7 @@ impl<'a> Command<'a> {
 
 /// Starts a shell using `prefix` as the prefix for each line. This function
 /// never returns.
-pub fn shell(prefix: &str) -> () {
+pub fn  shell(prefix: &str) -> () {
     const CMD_LEN: usize = 512;
     const ARG_LEN: usize = 64;
     kprintln!();

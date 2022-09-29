@@ -8,6 +8,7 @@
 #![feature(raw_vec_internals)]
 #![cfg_attr(not(test), no_std)]
 #![cfg_attr(not(test), no_main)]
+#![feature(panic_info_message)]
 
 #[cfg(not(test))]
 mod init;
@@ -43,7 +44,7 @@ pub static FILESYSTEM: FileSystem = FileSystem::uninitialized();
 pub static SCHEDULER: GlobalScheduler = GlobalScheduler::uninitialized();
 pub static VMM: VMManager = VMManager::uninitialized();
 pub static USB: Usb = Usb::uninitialized();
-pub static GLOABAL_IRQ: GlobalIrq = GlobalIrq::new();
+pub static GLOBAL_IRQ: GlobalIrq = GlobalIrq::new();
 pub static FIQ: Fiq = Fiq::new();
 pub static ETHERNET: GlobalEthernetDriver = GlobalEthernetDriver::uninitialized();
 
@@ -69,6 +70,7 @@ unsafe fn kmain() -> ! {
     ALLOCATOR.initialize();
     FILESYSTEM.initialize();
 
-    kprintln!("Welcome to cs3210!");
-    shell::shell("> ");
+    loop {
+        shell::shell("> ")
+    }
 }

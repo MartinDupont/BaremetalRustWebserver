@@ -251,11 +251,11 @@ pub fn sys_write_str(va: usize, len: usize, tf: &mut TrapFrame) {
         Ok(msg) => {
             kprint!("{}", msg);
 
-            tf.xs[0] = msg.len() as u64;
-            tf.xs[7] = OsError::Ok as u64;
+            tf.x[0] = msg.len() as u64;
+            tf.x[7] = OsError::Ok as u64;
         }
         Err(e) => {
-            tf.xs[7] = e as u64;
+            tf.x[7] = e as u64;
         }
     }
 }

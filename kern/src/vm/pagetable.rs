@@ -1,18 +1,18 @@
-use core::iter::{Chain, FlatMap};
+use core::iter::{FlatMap};
 use core::ops::{Deref, DerefMut};
 use core::slice::Iter;
 
 use alloc::boxed::Box;
 use alloc::{fmt, vec};
 use core::alloc::{GlobalAlloc, Layout};
-use core::slice;
-use crate::{allocator, kprintln};
+use crate::{allocator};
 use crate::param::*;
 use crate::vm::{PhysicalAddr, VirtualAddr};
 use crate::ALLOCATOR;
 
 use aarch64::vmsa::*;
 use shim::const_assert_size;
+use crate::console::kprintln;
 
 pub const VALID: u64 = 1;
 pub const L3_ENTRY_TYPE: u64 = 1 << 1;
