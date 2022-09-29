@@ -2,6 +2,7 @@ use aarch64::*;
 
 use core::mem::zeroed;
 use core::ptr::write_volatile;
+use core::time::Duration;
 
 mod oom;
 mod panic;
@@ -114,8 +115,9 @@ unsafe fn kinit() -> ! {
 /// Kernel entrypoint for core 1, 2, and 3
 #[no_mangle]
 pub unsafe extern "C" fn start2() -> ! {
-    // Lab 5 1.A
-    unimplemented!("start2")
+    SP.set(KERN_STACK_BASE - KERN_STACK_SIZE * MPIDR_EL1.get_value(MPIDR_EL1::Aff0) as usize);
+
+    kinit2()
 }
 
 unsafe fn kinit2() -> ! {
@@ -125,13 +127,27 @@ unsafe fn kinit2() -> ! {
 }
 
 unsafe fn kmain2() -> ! {
-    // Lab 5 1.A
-    unimplemented!("kmain2")
+    let core_idx = MPIDR_EL1.get_value(MPIDR_EL1::Aff0);
+    let addr = (SPINNING_BASE as u64 + 8 * core_idx) as *mut usize;
+    *addr = 0;
+    sev();
+    loop {}
 }
 
 /// Wakes up each app core by writing the address of `init::start2`
 /// to their spinning base and send event with `sev()`.
 pub unsafe fn initialize_app_cores() {
-    // Lab 5 1.A
-    unimplemented!("initialize_app_cores")
+    for i in 1..4usize {
+        let addr = (SPINNING_BASE as usize + 8 * i) as *mut usize;
+        *addr = start2 as usize;
+        sev();
+        loop {
+            // The nop() prevents optimizations. The compiler probably thinks it safe to do a
+            // single dereference of *addr because it is not aware of side effects.
+            nop();
+            if (*addr == 0) {
+                break;
+            }
+        }
+    }
 }

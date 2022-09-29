@@ -40,7 +40,7 @@ use vm::VMManager;
 
 #[cfg_attr(not(test), global_allocator)]
 pub static ALLOCATOR: Allocator = Allocator::uninitialized();
-pub static FILESYSTEM: FileSystem = FileSystem::uninitialized();
+//pub static FILESYSTEM: FileSystem = FileSystem::uninitialized();
 pub static SCHEDULER: GlobalScheduler = GlobalScheduler::uninitialized();
 pub static VMM: VMManager = VMManager::uninitialized();
 pub static USB: Usb = Usb::uninitialized();
@@ -68,7 +68,8 @@ unsafe fn kmain() -> ! {
     );
 
     ALLOCATOR.initialize();
-    FILESYSTEM.initialize();
+
+    init::initialize_app_cores();
 
     loop {
         shell::shell("> ")

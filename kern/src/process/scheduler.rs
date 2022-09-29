@@ -77,7 +77,7 @@ impl GlobalScheduler {
                     id,
                     tf.ELR,
                     tf.lr,
-                    tf.x[29],k
+                    tf.x[29],
                     tf.x[28],
                     tf.x[27]
                 );
