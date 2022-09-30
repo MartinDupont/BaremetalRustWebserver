@@ -38,9 +38,9 @@ impl<T> Mutex<T> {
     pub fn try_lock(&self) -> Option<MutexGuard<T>> {
         let cpu = aarch64::affinity();
         if is_mmu_ready() {
-            let ordering = Ordering::SeqCst;
-            if !self.lock.swap(true, ordering) {
-                self.owner.store(cpu, ordering);
+            if !self.lock.swap(true, Ordering::AcqRel) {
+                self.owner.store(cpu, Ordering::Release);
+                //getcpu();
                 Some(MutexGuard { lock: &self })
             } else {
                 None
@@ -48,6 +48,7 @@ impl<T> Mutex<T> {
         } else if cpu == 0 && (!self.lock.load(Ordering::Relaxed) || self.owner.load(Ordering::Relaxed) == cpu) {
             self.lock.store(true, Ordering::Relaxed);
             self.owner.store(cpu, Ordering::Relaxed);
+            //getcpu();
             Some(MutexGuard { lock: &self })
         } else {
             None
@@ -69,11 +70,12 @@ impl<T> Mutex<T> {
 
     fn unlock(&self) {
         let ordering = if is_mmu_ready() {
-            Ordering::SeqCst
+            Ordering::Release
         } else {
             Ordering::Relaxed
         };
         self.lock.store(false, ordering);
+        //putcpu(aarch64::affinity());
     }
 }
 
