@@ -38,9 +38,8 @@ impl<T> Mutex<T> {
         let ordering : Ordering;
         if is_mmu_ready() {
             ordering = Ordering::SeqCst;
-            let this = 0;
             if !self.lock.swap(true, ordering) {
-                self.owner.store(this, ordering);
+                self.owner.store(cpu, ordering);
                 Some(MutexGuard { lock: &self })
             } else {
                 None
