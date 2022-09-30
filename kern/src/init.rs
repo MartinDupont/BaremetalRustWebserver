@@ -130,7 +130,7 @@ unsafe fn kmain2() -> ! {
     let core_idx = MPIDR_EL1.get_value(MPIDR_EL1::Aff0);
     let addr = (SPINNING_BASE as u64 + 8 * core_idx) as *mut usize;
     *addr = 0;
-    sev();
+    VMM.wait();
     loop {}
 }
 

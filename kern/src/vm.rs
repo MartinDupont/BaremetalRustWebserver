@@ -33,9 +33,9 @@ impl VMManager {
     /// Initializes the virtual memory manager.
     /// The caller should assure that the method is invoked only once during the kernel
     /// initialization.
-    pub fn initialize(&mut self) {
+    pub fn initialize(&self) {
         let kern_page_table = KernPageTable::new();
-        self.kern_pt_addr = AtomicUsize::new(kern_page_table.get_baddr().as_usize());
+        self.kern_pt_addr.store(kern_page_table.get_baddr().as_usize(), Ordering::Relaxed);
         *self.kern_pt.lock() = Some(kern_page_table);
     }
 
@@ -103,8 +103,8 @@ impl VMManager {
 
         info!("MMU is ready for core-{}/@sp={:016x}", affinity(), SP.get());
 
-        // Lab 5 1.B
-        unimplemented!("wait for other cores")
+        self.ready_core_cnt.fetch_add(1, Ordering::Release);
+        while self.ready_core_cnt.load(Ordering::Acquire) < pi::common::NCORES {}
     }
 
     /// Returns the base address of the kernel page table as `PhysicalAddr`.

@@ -68,8 +68,12 @@ unsafe fn kmain() -> ! {
     );
 
     ALLOCATOR.initialize();
+    VMM.initialize();
+    SCHEDULER.initialize();
 
     init::initialize_app_cores();
+
+    VMM.wait();
 
     loop {
         shell::shell("> ")
