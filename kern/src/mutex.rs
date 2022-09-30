@@ -13,13 +13,15 @@ pub struct Mutex<T> {
 }
 
 unsafe impl<T: Send> Send for Mutex<T> {}
+
 unsafe impl<T: Send> Sync for Mutex<T> {}
 
 pub struct MutexGuard<'a, T: 'a> {
     lock: &'a Mutex<T>,
 }
 
-impl<'a, T> !Send for MutexGuard<'a, T> {}
+impl<'a, T> ! Send for MutexGuard<'a, T> {}
+
 unsafe impl<'a, T: Sync> Sync for MutexGuard<'a, T> {}
 
 impl<T> Mutex<T> {
@@ -35,29 +37,20 @@ impl<T> Mutex<T> {
 impl<T> Mutex<T> {
     pub fn try_lock(&self) -> Option<MutexGuard<T>> {
         let cpu = aarch64::affinity();
-        let ordering : Ordering;
         if is_mmu_ready() {
-            ordering = Ordering::SeqCst;
+            let ordering = Ordering::SeqCst;
             if !self.lock.swap(true, ordering) {
                 self.owner.store(cpu, ordering);
                 Some(MutexGuard { lock: &self })
             } else {
                 None
             }
+        } else if cpu == 0 && (!self.lock.load(Ordering::Relaxed) || self.owner.load(Ordering::Relaxed) == cpu) {
+            self.lock.store(true, Ordering::Relaxed);
+            self.owner.store(cpu, Ordering::Relaxed);
+            Some(MutexGuard { lock: &self })
         } else {
-            if cpu != 0 {
-                return None
-            }
-            ordering = Ordering::Relaxed;
-            let this = 0;
-            if !self.lock.load(ordering) || self.owner.load(ordering) == this {
-                self.lock.store(true, ordering);
-                self.owner.store(this, ordering);
-                Some(MutexGuard { lock: &self })
-            } else {
-                None
-            }
-
+            None
         }
     }
 
