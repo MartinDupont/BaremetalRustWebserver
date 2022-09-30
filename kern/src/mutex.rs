@@ -68,7 +68,12 @@ impl<T> Mutex<T> {
     }
 
     fn unlock(&self) {
-        self.lock.store(false, Ordering::Relaxed);
+        let ordering = if is_mmu_ready() {
+            Ordering::SeqCst
+        } else {
+            Ordering::Relaxed
+        };
+        self.lock.store(false, ordering);
     }
 }
 
