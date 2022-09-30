@@ -40,7 +40,6 @@ impl<T> Mutex<T> {
             ordering = Ordering::SeqCst;
             let this = 0;
             if !self.lock.swap(true, ordering) {
-                self.lock.store(true, ordering);
                 self.owner.store(this, ordering);
                 Some(MutexGuard { lock: &self })
             } else {
