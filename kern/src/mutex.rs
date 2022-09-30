@@ -38,9 +38,6 @@ impl<T> Mutex<T> {
         let ordering : Ordering;
         if is_mmu_ready() {
             ordering = Ordering::SeqCst;
-            if cpu != 0 {
-                return None
-            }
             let this = 0;
             if !self.lock.swap(true, ordering) {
                 self.lock.store(true, ordering);
@@ -50,6 +47,9 @@ impl<T> Mutex<T> {
                 None
             }
         } else {
+            if cpu != 0 {
+                return None
+            }
             ordering = Ordering::Relaxed;
             let this = 0;
             if !self.lock.load(ordering) || self.owner.load(ordering) == this {
