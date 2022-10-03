@@ -11,7 +11,7 @@ use core::time::Duration;
 use aarch64::*;
 use pi::interrupt::{Controller, Interrupt};
 use pi::armlocal::ArmLocalController;
-use pi::local_interrupt::LocalInterrupt;
+use pi::local_interrupt::{LocalController, LocalInterrupt};
 use smoltcp::time::Instant;
 
 use crate::mutex::Mutex;
@@ -100,20 +100,18 @@ impl GlobalScheduler {
     /// conditions.
     pub fn start(&self) -> ! {
 
-        let mut tf = Box::new(TrapFrame::default());
+        let mut tf = TrapFrame::default();
         self.critical(|scheduler| scheduler.switch_to(&mut tf));
+        let core = aarch64::affinity();
+        if core == 0 {
+            //self.initialize_global_timer_interrupt();
+        }
+        self.initialize_local_timer_interrupt();
 
 
         unsafe {
-            asm!("mov x0, $0
-                  mov sp, x0"
-                 :: "r"(tf)
-                 :: "volatile");
+            SP.set(&tf as *const TrapFrame as usize);
             asm!("bl context_restore" :::: "volatile");
-            asm!("adr x0, _start
-                  mov sp, x0"
-                 :::: "volatile");
-            asm!("mov x0, #0" :::: "volatile");
             eret();
         }
 
@@ -130,25 +128,28 @@ impl GlobalScheduler {
     /// Registers a timer handler with `Usb::start_kernel_timer` which will
     /// invoke `poll_ethernet` after 1 second.
     pub fn initialize_global_timer_interrupt(&self) {
-        // Setup timer interrupt
-        GLOBAL_IRQ.register(
-            Interrupt::Timer1,
-            Box::new(|tf| {
-                let id = SCHEDULER.switch(State::Ready, tf);
-                tick_in(TICK);
-            }),
-        );
-        let mut controller = Controller::new();
-        controller.enable(Interrupt::Timer1);
-        tick_in(TICK);
+
     }
 
     /// Initializes the per-core local timer interrupt with `pi::local_interrupt`.
     /// The timer should be configured in a way that `CntpnsIrq` interrupt fires
     /// every `TICK` duration, which is defined in `param.rs`.
     pub fn initialize_local_timer_interrupt(&self) {
-        // Lab 5 2.C
-        unimplemented!("initialize_local_timer_interrupt()")
+        // Setup timer interrupt
+        let registry = local_irq();
+        registry.register(
+            LocalInterrupt::TIMER_IRQ,
+            Box::new(|tf| {
+                let id = SCHEDULER.switch(State::Ready, tf);
+                let core = aarch64::affinity();
+                let mut controller = LocalController::new(core);
+                controller.tick_in(TICK);
+            }),
+        );
+        let core = aarch64::affinity();
+        let mut controller = LocalController::new(core);
+        controller.enable_local_timer();
+        controller.tick_in(TICK);
     }
 
     /// Initializes the scheduler and add userspace processes to the Scheduler.
@@ -256,15 +257,18 @@ impl Scheduler {
     /// If the `processes` queue is empty or there is no current process,
     /// returns `false`. Otherwise, returns `true`.
     fn schedule_out(&mut self, new_state: State, tf: &mut TrapFrame) -> bool {
-        match self.processes.pop_front() {
-            None => false,
-            Some(mut old_process) => {
-                old_process.state = new_state;
-                old_process.context = Box::new(*tf);
-                self.processes.push_back(old_process);
-                true
+        // Get the current running process on this core by matching the process id.
+        for i in 0..self.processes.len() {
+            let process = &mut self.processes[i];
+            if process.context.TPIDR == tf.TPIDR {
+                *process.context = *tf;
+                process.state = new_state;
+                let process = self.processes.remove(i).unwrap();
+                self.processes.push_back(process);
+                return true;
             }
         }
+        false
     }
 
     /// Finds the next process to switch to, brings the next process to the

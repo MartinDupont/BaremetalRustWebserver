@@ -16,6 +16,7 @@ use crate::traps::irq::IrqHandlerRegistry;
 
 use crate::{GLOBAL_IRQ, shell};
 use crate::console::{kprintln};
+use crate::percore::getcpu;
 
 #[repr(u16)]
 #[derive(Debug, PartialEq, Eq, Copy, Clone)]
@@ -50,10 +51,23 @@ pub struct Info {
 pub extern "C" fn handle_exception(info: Info, esr: u32, tf: &mut TrapFrame) {
     match info.kind {
         Kind::Irq => {
-            let mut controller = Controller::new();
-            for int in Interrupt::iter() {
-                if controller.is_pending(int) {
-                    GLOBAL_IRQ.invoke(int, tf);
+            if aarch64::affinity() == 0 {
+                // global interrupts
+                let controller = Controller::new();
+                for interrupt in Interrupt::iter() {
+                    if controller.is_pending(interrupt) {
+                        GLOBAL_IRQ.invoke(interrupt, tf);
+                    }
+                }
+            }
+
+            // local interrupts
+            let controller = LocalController::new(aarch64::affinity());
+            for interrupt in LocalInterrupt::iter() {
+                if controller.is_pending(interrupt) {
+                    let cpu = getcpu();
+                    trace!("Cpu {} is handling an IRQ", cpu);
+                    percore::local_irq().invoke(interrupt, tf);
                 }
             }
         }

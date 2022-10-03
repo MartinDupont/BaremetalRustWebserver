@@ -10,6 +10,7 @@ mod panic;
 use crate::kmain;
 use crate::param::*;
 use crate::VMM;
+use crate::SCHEDULER;
 
 global_asm!(include_str!("init/vectors.s"));
 
@@ -131,7 +132,7 @@ unsafe fn kmain2() -> ! {
     let addr = (SPINNING_BASE as u64 + 8 * core_idx) as *mut usize;
     *addr = 0;
     VMM.wait();
-    loop {}
+    SCHEDULER.start()
 }
 
 /// Wakes up each app core by writing the address of `init::start2`
