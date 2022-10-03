@@ -245,7 +245,7 @@ defreg!(
         EL0PTEN[09 - 09],  // When 0, traps EL0 access to the physical timer to EL1
         EL0VTEN[08 - 08],  // When 0, traps EL0 access to the virtual timer to EL1
         EVNTI[07 - 04], // Select which bit of the counter register CNTVCT_EL0 is the trigger for the event stream generated from that counter when that event stream is enabled
-        EVNTDIR[03 - 03], // Controls which traisition of the counter register CNTVCT_EL0 trigger bit generates an event when the event stream is enabled
+        EVNTDIR[03 - 03], // Controls which transition of the counter register CNTVCT_EL0 trigger bit generates an event when the event stream is enabled
         EVNTEN[02 - 02], // Enables the generation of an event stream from the counter register CNTVCT_EL0
         EL0VCTEN[01 - 01], // When 0, traps EL0 access to the virtual timer control to EL1
         EL0PCTEN[00 - 00], // When 0, traps EL0 access to the physical timer control to EL1
