@@ -58,16 +58,18 @@ impl FileSystem {
     ///
     /// # Panics
     ///
-    /// Panics if the underlying disk or file sytem failed to initialize.
+    /// Panics if the underlying disk or file system failed to initialize.
     pub unsafe fn initialize(&self) {
-        match &EMMC_CONT.emmc_init_card() {
-            pi::emmc::SdResult::EMMC_OK => {
-                kprintln!("EMMC2 driver initialized...\n")
-            }
-            _ => {
-                kprintln!("failed to initialize EMMC2...\n")
-            }
+        use fat32::traits::BlockDevice;
+        let mut sd_device = Sd::new().expect("No SD card found");
+        let mut sector = [0u8; 512];
+        sd_device.read_sector(0, &mut sector).unwrap();
+        for i in 0..16 {
+            kprintln!("{:?}", &sector[i..32+i]);
         }
+
+        let handle = VFat::<PiVFatHandle>::from(sd_device).expect("Could not initialize filesystem from SD device");
+        *self.0.lock() = Some(handle);
     }
 }
 

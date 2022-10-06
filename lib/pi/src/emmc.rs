@@ -22,8 +22,6 @@ use crate::timer;
 use crate::common::{states, EMMC_START};
 
 
-use crate::blockdevice::{Block, BlockCount, BlockDevice, BlockIdx};
-
 
 pub static EMMC_CONT: EMMCController =
     unsafe { EMMCController::new(EMMC_START) };
@@ -1524,57 +1522,6 @@ fn tick_difference(start_time: Duration, end_time: Duration) -> u64 {
 /// Representation of the SDHOST controller.
 pub struct EMMCController {
     registers: Registers,
-}
-
-impl BlockDevice for &EMMCController {
-    type Error = SdResult;
-    /// Read one or more blocks, starting at the given block index.
-    fn read(
-        &self,
-        blocks: &mut [Block],
-        start_block_idx: BlockIdx,
-        reason: &str,
-    ) -> Result<(), Self::Error> {
-        match reason {
-            "read_multi" | "read" | "read_mbr" | "read_bpb" | "read_info_sector" | "read_fat"
-            | "next_cluster" | "read_dir" | "fat_read" => {}
-            _ => {
-                //info!("invalid read operation");
-                return Err(SdResult::NONE);
-            }
-        }
-        let num_blocks = blocks.len();
-        let len = num_blocks * Block::LEN;
-        let ptr = (&mut blocks[0].contents).as_mut_ptr();
-        let mut buff;
-        unsafe {
-            // there is no way to turn a slice of arrays into a slice of bytes i.e.
-            // turn a &mut [[u8; 512]] to a &mut [u8].
-            // at least, we cannot do this without prior allocation. In a no_std environment, where
-            // a heap doesnt exist, this becomes a pain. We'd either have to use something like `heapless`
-            // (and predict the amount of space we'll use for allocation) or take the last resort.
-            //
-            // use `from_raw_parts_mut` to construct a mutable slice of bytes from a slice of arrays.
-            //
-            // # Safety
-            // - This is still safe as it satifies all (of from_raw_parts_mut) usage conditions.
-            buff = core::slice::from_raw_parts_mut(ptr, len);
-        }
-        let res =
-            &EMMC_CONT.emmc_transfer_blocks(start_block_idx.0, num_blocks as u32, &mut buff, false);
-        match res {
-            SdResult::EMMC_OK => Ok(()),
-            _ => Err(*res),
-        }
-    }
-    /// Write one or more blocks, starting at the given block index.
-    fn write(&self, _blocks: &[Block], _start_block_idx: BlockIdx) -> Result<(), Self::Error> {
-        unimplemented!()
-    }
-    /// Determine how many blocks this device can hold.
-    fn num_blocks(&self) -> Result<BlockCount, Self::Error> {
-        unimplemented!()
-    }
 }
 
 impl EMMCController {
