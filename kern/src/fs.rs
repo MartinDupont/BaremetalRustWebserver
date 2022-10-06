@@ -1,6 +1,6 @@
 pub mod sd;
 
-use alloc::rc::Rc;
+use alloc::rc::{Rc};
 use core::fmt::{self, Debug};
 use shim::io;
 use shim::newioerr;
@@ -9,6 +9,7 @@ use crate::console::kprintln;
 
 pub use fat32::traits;
 use fat32::vfat::{Dir, Entry, File, VFat, VFatHandle};
+use pi::emmc::EMMC_CONT;
 
 use self::sd::Sd;
 use crate::mutex::Mutex;
@@ -59,9 +60,14 @@ impl FileSystem {
     ///
     /// Panics if the underlying disk or file sytem failed to initialize.
     pub unsafe fn initialize(&self) {
-        let sd_device = Sd::new().expect("No SD card found");
-        let handle = VFat::<PiVFatHandle>::from(sd_device).expect("Could not initialize filesystem from SD device");
-        *self.0.lock() = Some(handle);
+        match &EMMC_CONT.emmc_init_card() {
+            pi::emmc::SdResult::EMMC_OK => {
+                kprintln!("EMMC2 driver initialized...\n")
+            }
+            _ => {
+                kprintln!("failed to initialize EMMC2...\n")
+            }
+        }
     }
 }
 

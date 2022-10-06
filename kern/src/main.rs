@@ -12,10 +12,12 @@
 #[cfg(not(test))]
 mod init;
 
+extern crate alloc;
 pub mod console;
 pub mod mutex;
 pub mod shell;
 pub mod allocator;
+pub mod fs;
 
 use console::kprintln;
 
@@ -23,13 +25,16 @@ use pi::uart::uart_io;
 use shim::io::Write;
 use shim::io::Read;
 use allocator::Allocator;
+use fs::FileSystem;
 
 #[cfg_attr(not(test), global_allocator)]
 pub static ALLOCATOR: Allocator = Allocator::uninitialized();
+pub static FILESYSTEM: FileSystem = FileSystem::uninitialized();
 
 fn kmain() -> ! {
     unsafe {
         ALLOCATOR.initialize();
+        FILESYSTEM.initialize();
     }
     shell::shell("> ");
 }
