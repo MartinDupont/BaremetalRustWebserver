@@ -2,10 +2,10 @@ use core::time::Duration;
 use shim::io;
 use shim::ioerr;
 
-use crate::console::{kprint, kprintln};
+use crate::console::{CONSOLE, Console, kprint, kprintln};
 
 use fat32::traits::BlockDevice;
-use pi::emmc::{EMMC_CONT, SdResult};
+use pi::emmc::{EMMCController, SdResult};
 
 const ERR_TIMEOUT: i32 = -1;
 const ERR_SENDING_CMD: i32 = -2;
@@ -22,6 +22,10 @@ fn wait_micros(micros: u32) {
 /// A handle to an SD card controller.
 #[derive(Debug)]
 pub struct Sd;
+
+// TODO: REMOVE Console from EMMC controller after I'm finished debugging!
+pub static EMMC_CONT: EMMCController<Console> =
+    unsafe { EMMCController::new(Console::new()) };
 
 impl Sd {
     /// Initializes the SD card controller and returns a handle to it.
@@ -70,11 +74,10 @@ impl BlockDevice for Sd {
         //     kprintln!("align: {}", core::mem::align_of_val(buf));
         //     return ioerr!(InvalidInput, "align_of_val(buf) < 4");
         // }
-        let mut sector = [0u8; 512];
-        let res = &EMMC_CONT.emmc_transfer_blocks(n as u32, 1, &mut sector, false);
+        let res = &EMMC_CONT.emmc_transfer_blocks(n as u32, 1, buf, false);
+
         return match res {
             SdResult::EMMC_OK => {
-                buf[..512].copy_from_slice(&sector);
                 Ok(512)
             },
             SdResult::EMMC_TIMEOUT => ioerr!(BrokenPipe, "timeout"),

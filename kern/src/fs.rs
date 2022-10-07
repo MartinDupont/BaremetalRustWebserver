@@ -9,7 +9,6 @@ use crate::console::kprintln;
 
 pub use fat32::traits;
 use fat32::vfat::{Dir, Entry, File, VFat, VFatHandle};
-use pi::emmc::EMMC_CONT;
 
 use self::sd::Sd;
 use crate::mutex::Mutex;
@@ -62,11 +61,6 @@ impl FileSystem {
     pub unsafe fn initialize(&self) {
         use fat32::traits::BlockDevice;
         let mut sd_device = Sd::new().expect("No SD card found");
-        let mut sector = [0u8; 512];
-        sd_device.read_sector(0, &mut sector).unwrap();
-        for i in 0..16 {
-            kprintln!("{:?}", &sector[i..32+i]);
-        }
 
         let handle = VFat::<PiVFatHandle>::from(sd_device).expect("Could not initialize filesystem from SD device");
         *self.0.lock() = Some(handle);

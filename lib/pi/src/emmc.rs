@@ -8,7 +8,7 @@
 
 use core::{convert::TryInto, fmt::Debug};
 use core::marker::PhantomData;
-use core::ops::{self, Deref};
+use core::ops::{self, DerefMut, Deref, Drop};
 use rpi4_constants::*;
 use tock_registers::{
     interfaces::{ReadWriteable, Readable, Writeable},
@@ -17,22 +17,110 @@ use tock_registers::{
     LocalRegisterCopy,
 };
 
+use core::fmt;
+
 use core::time::Duration;
 use crate::timer;
 use crate::common::{states, EMMC_START};
-
-
-
-pub static EMMC_CONT: EMMCController =
-    unsafe { EMMCController::new(EMMC_START) };
-
-
 
 
 pub struct MMIODerefWrapper<T> {
     start_addr: usize,
     phantom: PhantomData<fn() -> T>,
 }
+
+use core::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
+use core::cell::UnsafeCell;
+
+#[repr(align(32))]
+pub struct Mutex<T> {
+    data: UnsafeCell<T>,
+    lock: AtomicBool,
+    owner: AtomicUsize
+}
+
+unsafe impl<T: Send> Send for Mutex<T> { }
+unsafe impl<T: Send> Sync for Mutex<T> { }
+
+pub struct MutexGuard<'a, T: 'a> {
+    lock: &'a Mutex<T>
+}
+
+impl<'a, T> !Send for MutexGuard<'a, T> { }
+unsafe impl<'a, T: Sync> Sync for MutexGuard<'a, T> { }
+
+impl<T> Mutex<T> {
+    pub const fn new(val: T) -> Mutex<T> {
+        Mutex {
+            lock: AtomicBool::new(false),
+            owner: AtomicUsize::new(usize::max_value()),
+            data: UnsafeCell::new(val)
+        }
+    }
+}
+
+impl<T> Mutex<T> {
+    // Once MMU/cache is enabled, do the right thing here. For now, we don't
+    // need any real synchronization.
+    pub fn try_lock(&self) -> Option<MutexGuard<T>> {
+        let this = 0;
+        if !self.lock.load(Ordering::Relaxed) || self.owner.load(Ordering::Relaxed) == this {
+            self.lock.store(true, Ordering::Relaxed);
+            self.owner.store(this, Ordering::Relaxed);
+            Some(MutexGuard { lock: &self })
+        } else {
+            None
+        }
+    }
+
+    // Once MMU/cache is enabled, do the right thing here. For now, we don't
+    // need any real synchronization.
+    #[inline(never)]
+    pub fn lock(&self) -> MutexGuard<T> {
+        // Wait until we can "aquire" the lock, then "acquire" it.
+        loop {
+            match self.try_lock() {
+                Some(guard) => return guard,
+                None => continue
+            }
+        }
+    }
+
+    fn unlock(&self) {
+        self.lock.store(false, Ordering::Relaxed);
+    }
+}
+
+impl<'a, T: 'a> Deref for MutexGuard<'a, T> {
+    type Target = T;
+
+    fn deref(&self) -> &T {
+        unsafe { & *self.lock.data.get() }
+    }
+}
+
+impl<'a, T: 'a> DerefMut for MutexGuard<'a, T> {
+    fn deref_mut(&mut self) -> &mut T {
+        unsafe { &mut *self.lock.data.get() }
+    }
+}
+
+impl<'a, T: 'a> Drop for MutexGuard<'a, T> {
+    fn drop(&mut self) {
+        self.lock.unlock()
+    }
+}
+
+impl<T: fmt::Debug> fmt::Debug for Mutex<T> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self.try_lock() {
+            Some(guard) => f.debug_struct("Mutex").field("data", &&*guard).finish(),
+            None => f.debug_struct("Mutex").field("data", &"<locked>").finish()
+        }
+    }
+}
+
+
 
 //--------------------------------------------------------------------------------------------------
 // Public Code
@@ -1520,38 +1608,40 @@ fn tick_difference(start_time: Duration, end_time: Duration) -> u64 {
 }
 
 /// Representation of the SDHOST controller.
-pub struct EMMCController {
+pub struct EMMCController<T: core::fmt::Write> {
     registers: Registers,
+    console: Mutex<T>,
 }
 
-impl EMMCController {
+impl <T: core::fmt::Write> EMMCController<T> {
     /// Create an instance.
     ///
     /// **Safety**
     ///
     /// - The user must ensure to provide a correct MMIO start address.
-    pub const unsafe fn new(mmio_start_addr: usize) -> Self {
+    pub const unsafe fn new(console: T) -> Self {
         Self {
-            registers: Registers::new(mmio_start_addr),
+            registers: Registers::new(EMMC_START),
+            console: Mutex::new(console),
         }
     }
 
     pub fn emmc_debug_response(&self, resp: SdResult) -> SdResult {
-        // info!(
-        //     "EMMC: STATUS: 0x{:08x}, CONTROL1: 0x{:08x}, INTERRUPT: 0x{:08x}\n",
-        //     self.registers.EMMC_STATUS.get(),
-        //     self.registers.EMMC_CONTROL1.get(),
-        //     self.registers.EMMC_INTERRUPT.get()
-        // );
-        // info!(
-        //     "EMMC: CMD {:?}, resp: {:?}, RESP3: 0x{:08x}, RESP2: 0x{:08x}, RESP1: 0x{:08x}, RESP0: 0x{:08x}\n",
-        //     unsafe { EMMC_CARD.last_cmd.cmd_name },
-        //     resp,
-        //     self.registers.EMMC_RESP3.get(),
-        //     self.registers.EMMC_RESP2.get(),
-        //     self.registers.EMMC_RESP1.get(),
-        //     self.registers.EMMC_RESP0.get()
-        // );
+        self._print(format_args!(
+            "EMMC: STATUS: 0x{:08x}, CONTROL1: 0x{:08x}, INTERRUPT: 0x{:08x}\n",
+            self.registers.EMMC_STATUS.get(),
+            self.registers.EMMC_CONTROL1.get(),
+            self.registers.EMMC_INTERRUPT.get()
+        ));
+        self._print(format_args!(
+            "EMMC: CMD {:?}, resp: {:?}, RESP3: 0x{:08x}, RESP2: 0x{:08x}, RESP1: 0x{:08x}, RESP0: 0x{:08x}\n",
+            unsafe { EMMC_CARD.last_cmd.cmd_name },
+            resp,
+            self.registers.EMMC_RESP3.get(),
+            self.registers.EMMC_RESP2.get(),
+            self.registers.EMMC_RESP1.get(),
+            self.registers.EMMC_RESP0.get()
+        ));
         return resp;
     }
     /// Given an interrupt mask, this function loops polling for the condition (for up to 1 second).
@@ -2507,6 +2597,8 @@ impl EMMCController {
             blocks_done += 1;
         }
 
+        self._print(format_args!("{:X?}\n", &buffer[..]));
+
         // If not all bytes were read, the operation timed out.
         if (blocks_done + 1 != num_blocks) {
             #[cfg(feature = "log")]
@@ -2650,6 +2742,8 @@ impl EMMCController {
     /// - !EMMC_OK if card initialize failed with code identifying error.
     pub fn emmc_init_card(&self) -> SdResult {
         let mut resp = self.emmc_reset_card(); // Reset the card.
+
+        resp = self.emmc_debug_response(resp);
 
         if (resp != SdResult::EMMC_OK) {
             return resp;
@@ -2804,6 +2898,16 @@ impl EMMCController {
         }
 
         return SdResult::EMMC_OK;
+    }
+
+    /// Internal function called by the `kprint[ln]!` macros.
+    #[doc(hidden)]
+    pub fn _print(&self, args: fmt::Arguments) {
+        {
+            use core::fmt::Write;
+            let mut console = self.console.lock();
+            core::fmt::Write::write_fmt(&mut *console, args).unwrap();
+        }
     }
 }
 

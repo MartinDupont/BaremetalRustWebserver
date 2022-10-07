@@ -7,6 +7,7 @@
 #![feature(ptr_offset_from)]
 #![feature(ptr_cast)]
 #![feature(type_alias_enum_variants)]
+#![feature(optin_builtin_traits)]
 
 
 
