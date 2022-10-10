@@ -25,8 +25,8 @@ pub trait VFatHandle: Clone + Debug + Send + Sync {
 pub struct VFat<HANDLE: VFatHandle> {
     phantom: PhantomData<HANDLE>,
     device: PartitionedDevice,
-    bytes_per_sector: u16,
-    sectors_per_cluster: u8,
+    pub bytes_per_sector: u16,
+    pub sectors_per_cluster: u8,
     sectors_per_fat: u32,
     fat_start_sector: u64,
     data_start_sector: u64,
@@ -80,8 +80,14 @@ impl<HANDLE: VFatHandle> VFat<HANDLE> {
         _offset: usize,
         buf: &mut [u8],
     ) -> io::Result<usize> {
-        let sector = self.get_sector_for_cluster(cluster);
-        let n_read = self.device.read_sector(sector, buf)?;
+        let start_sector = self.get_sector_for_cluster(cluster);
+        let mut n_read = 0;
+        for i in 0..self.sectors_per_cluster as u64 {
+            let start = (i as u16 * self.bytes_per_sector) as usize;
+            let end = ((i as u16  + 1) * self.bytes_per_sector) as usize;
+            let mut buf_slice = &mut buf[start..end];
+            n_read += self.device.read_sector(start_sector + i, buf_slice)?;
+        }
 
         Ok(n_read)
     }
@@ -93,7 +99,8 @@ impl<HANDLE: VFatHandle> VFat<HANDLE> {
         start: Cluster,
         buf: &mut Vec<u8>,
     ) -> io::Result<usize> {
-        let mut cluster_data = vec![0u8; self.bytes_per_sector as usize];
+        let n_bytes = (self.bytes_per_sector * (self.sectors_per_cluster as u16)) as usize;
+        let mut cluster_data = vec![0u8; n_bytes];
         let mut next = start;
         let mut read_bytes = 0;
         loop {
@@ -108,7 +115,7 @@ impl<HANDLE: VFatHandle> VFat<HANDLE> {
         Ok(read_bytes)
     }
 
-    fn fat_entry(&mut self, cluster: Cluster) -> io::Result<FatEntry> {
+    pub fn fat_entry(&mut self, cluster: Cluster) -> io::Result<FatEntry> {
         let fat_entries_per_sector = self.device.sector_size() as usize / size_of::<FatEntry>();
         let sector = self.fat_start_sector + cluster.raw() as u64 / (fat_entries_per_sector as u64);
         let offset = cluster.raw() as usize % (fat_entries_per_sector as usize);
@@ -162,5 +169,4 @@ impl<'a, HANDLE: VFatHandle> FileSystem for &'a HANDLE {
         }
         Ok(found)
     }
-
 }
