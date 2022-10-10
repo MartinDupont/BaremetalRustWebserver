@@ -14,7 +14,7 @@ pub struct CHS {
 
 impl fmt::Debug for CHS {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        write!(f, "Junk")?;
+        writeln!(f, "{:?}", self.junk)?;
         Ok(())
     }
 }
@@ -34,13 +34,11 @@ pub struct PartitionEntry {
 
 impl fmt::Debug for PartitionEntry {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-        write!(f, "Boot: {}", &{ self.boot })?;
-        write!(f, "Starting CHS: ")?;
-        self.starting_chs.fmt(f)?;
-        write!(f, "Partition Type: {}", &{ self.partition_type })?;
-        write!(f, "Ending CHS: ")?;
-        self.ending_chs.fmt(f)?;
-        write!(f, "Total Sectors: {}", &{ self.total_sectors_in_partition })?;
+        writeln!(f, "Boot: {}", self.boot )?;
+        writeln!(f, "Starting CHS: {:?}", self.starting_chs)?;
+        writeln!(f, "Partition Type: {}", self.partition_type)?;
+        writeln!(f, "Ending CHS: {:?}", self.ending_chs)?;
+        writeln!(f, "Total Sectors: {}", self.total_sectors_in_partition)?;
         Ok(())
     }
 }
@@ -59,11 +57,11 @@ pub struct MasterBootRecord {
 
 impl fmt::Debug for MasterBootRecord {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        self.disk_id_1.fmt(f)?;
+        writeln!(f, "Disk id 1: {:?}", self.disk_id_1)?;
         for table in self.partition_table.iter() {
             table.fmt(f)?;
         }
-        write!(f, "Signature: {}", &{ self.signature })?;
+        writeln!(f, "Signature: {:X?}", self.signature)?;
         Ok(())
     }
 }
