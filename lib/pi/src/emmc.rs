@@ -2597,7 +2597,7 @@ impl <T: core::fmt::Write> EMMCController<T> {
             blocks_done += 1;
         }
 
-        self._print(format_args!("{:X?}\n", &buffer[..]));
+        //self._print(format_args!("{:X?}\n", &buffer[..]));
 
         // If not all bytes were read, the operation timed out.
         if (blocks_done + 1 != num_blocks) {
