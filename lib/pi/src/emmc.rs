@@ -1608,21 +1608,19 @@ fn tick_difference(start_time: Duration, end_time: Duration) -> u64 {
 }
 
 /// Representation of the SDHOST controller.
-pub struct EMMCController<T: core::fmt::Write> {
+pub struct EMMCController {
     registers: Registers,
-    console: Mutex<T>,
 }
 
-impl <T: core::fmt::Write> EMMCController<T> {
+impl EMMCController {
     /// Create an instance.
     ///
     /// **Safety**
     ///
     /// - The user must ensure to provide a correct MMIO start address.
-    pub const unsafe fn new(console: T) -> Self {
+    pub const unsafe fn new() -> Self {
         Self {
             registers: Registers::new(EMMC_START),
-            console: Mutex::new(console),
         }
     }
 
@@ -2904,9 +2902,9 @@ impl <T: core::fmt::Write> EMMCController<T> {
     #[doc(hidden)]
     pub fn _print(&self, args: fmt::Arguments) {
         {
-            use core::fmt::Write;
-            let mut console = self.console.lock();
-            core::fmt::Write::write_fmt(&mut *console, args).unwrap();
+            // use core::fmt::Write;
+            // let mut console = self.console.lock();
+            // core::fmt::Write::write_fmt(&mut *console, args).unwrap();
         }
     }
 }

@@ -2,30 +2,19 @@ use core::time::Duration;
 use shim::io;
 use shim::ioerr;
 
-use crate::console::{CONSOLE, Console, kprint, kprintln};
+use crate::console::{kprint, kprintln};
+use crate::mutex::Mutex;
 
 use fat32::traits::BlockDevice;
 use pi::emmc::{EMMCController, SdResult};
 
-const ERR_TIMEOUT: i32 = -1;
-const ERR_SENDING_CMD: i32 = -2;
-
-use pi::timer::spin_sleep;
-
-// Define a `#[no_mangle]` `wait_micros` function for use by `libsd`.
-// The `wait_micros` C signature is: `void wait_micros(unsigned int);`
-#[no_mangle]
-fn wait_micros(micros: u32) {
-    spin_sleep(Duration::from_micros(micros as u64 * 1000));
-}
 
 /// A handle to an SD card controller.
 #[derive(Debug)]
 pub struct Sd;
 
-// TODO: REMOVE Console from EMMC controller after I'm finished debugging!
-pub static EMMC_CONT: EMMCController<Console> =
-    unsafe { EMMCController::new(Console::new()) };
+pub static EMMC_CONT: Mutex<EMMCController> = unsafe { Mutex::new(EMMCController::new()) };
+
 
 impl Sd {
     /// Initializes the SD card controller and returns a handle to it.
@@ -34,8 +23,8 @@ impl Sd {
     /// with atomic memory access, but we can't use it yet since we haven't
     /// written the memory management unit (MMU).
     pub unsafe fn new() -> Result<Sd, io::Error> {
-        match &EMMC_CONT.emmc_init_card() {
-            pi::emmc::SdResult::EMMC_OK => {
+        match EMMC_CONT.lock().emmc_init_card() {
+            SdResult::EMMC_OK => {
                 kprintln!("EMMC2 driver initialized...\n");
                 Ok(Sd {})
             }
@@ -45,9 +34,6 @@ impl Sd {
         }
     }
 }
-
-#[repr(align(4))]
-struct Sector([u8; 512]);
 
 impl BlockDevice for Sd {
     /// Reads sector `n` from the SD card into `buf`. On success, the number of
@@ -63,18 +49,13 @@ impl BlockDevice for Sd {
     ///
     /// An error of kind `Other` is returned for all other errors.
     fn read_sector(&mut self, n: u64, buf: &mut [u8]) -> io::Result<usize> {
-        // kprintln!("DBG Read sector {}", n);
         if buf.len() < 512 {
             return ioerr!(InvalidInput, "buf.len() < 512");
         }
         if n > 0x7fffffff {
             return ioerr!(InvalidInput, "n > 0x7fffffff");
         }
-        // if core::mem::align_of_val(buf) < 4 {
-        //     kprintln!("align: {}", core::mem::align_of_val(buf));
-        //     return ioerr!(InvalidInput, "align_of_val(buf) < 4");
-        // }
-        let res = &EMMC_CONT.emmc_transfer_blocks(n as u32, 1, buf, false);
+        let res = EMMC_CONT.lock().emmc_transfer_blocks(n as u32, 1, buf, false);
 
         return match res {
             SdResult::EMMC_OK => {

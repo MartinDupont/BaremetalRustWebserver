@@ -36,5 +36,5 @@ fn kmain() -> ! {
         ALLOCATOR.initialize();
         FILESYSTEM.initialize();
     }
-    shell::shell("> ");
+    shell::shell("> ")
 }
