@@ -138,6 +138,7 @@ version = "0.1.0"
 dependencies = [
  "aarch64 0.1.0",
  "shim 0.1.0",
+ "tock-registers 0.7.0",
  "volatile 0.1.0",
 ]
 
@@ -254,6 +255,10 @@ dependencies = [
  "quote 1.0.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "unicode-xid 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
+
+[[package]]
+name = "tock-registers"
+version = "0.7.0"
 
 [[package]]
 name = "unicode-xid"

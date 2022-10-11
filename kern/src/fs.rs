@@ -1,6 +1,6 @@
 pub mod sd;
 
-use alloc::rc::Rc;
+use alloc::rc::{Rc};
 use core::fmt::{self, Debug};
 use shim::io;
 use shim::newioerr;
@@ -57,9 +57,11 @@ impl FileSystem {
     ///
     /// # Panics
     ///
-    /// Panics if the underlying disk or file sytem failed to initialize.
+    /// Panics if the underlying disk or file system failed to initialize.
     pub unsafe fn initialize(&self) {
-        let sd_device = Sd::new().expect("No SD card found");
+        use fat32::traits::BlockDevice;
+        let mut sd_device = Sd::new().expect("No SD card found");
+
         let handle = VFat::<PiVFatHandle>::from(sd_device).expect("Could not initialize filesystem from SD device");
         *self.0.lock() = Some(handle);
     }

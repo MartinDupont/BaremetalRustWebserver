@@ -14,7 +14,7 @@ pub struct Console {
 
 impl Console {
     /// Creates a new instance of `Console`.
-    const fn new() -> Console {
+    pub(crate) const fn new() -> Console {
         Console { inner: None }
     }
 
