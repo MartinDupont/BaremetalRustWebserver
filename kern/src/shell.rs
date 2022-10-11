@@ -66,7 +66,7 @@ impl Shell {
         Shell { cwd: PathBuf::from("/") }
     }
 
-    fn _shell(&self, prefix: &str) -> ! {
+    fn _shell(&mut self, prefix: &str) -> ! {
         const CMD_LEN: usize = 512;
         const ARG_LEN: usize = 64;
         kprintln!();
@@ -78,7 +78,7 @@ impl Shell {
             let mut cmd_buf = [0u8; CMD_LEN];
             let mut arg_buf = [""; ARG_LEN];
 
-            kprint!("{}", prefix);
+            kprint!("{} {}", self.cwd.to_str().unwrap(), prefix);
 
             let mut i = 0;
             'cmd: loop {
@@ -125,7 +125,7 @@ impl Shell {
     }
 
 
-    fn process_command(&self, cmd: Command) -> Option<()> {
+    fn process_command(&mut self, cmd: Command) -> Option<()> {
         let arg1 = cmd.path();
         match arg1 {
             "echo" => {
@@ -142,6 +142,7 @@ impl Shell {
                 kprintln!("{}", self.cwd.to_str().unwrap());
             }
             "ls" => { self.ls(cmd.args) }
+            "cd" => { self.cd(cmd.args) }
             "" => {
                 kprintln!();
             }
@@ -153,10 +154,24 @@ impl Shell {
     }
 
 
+    fn cd(&mut self, mut args: Vec<&str>) {
+        if args.len() != 2 {
+            kprintln!("cd takes only 1 argument, but received {}", args.len() - 1);
+            return;
+        }
+
+        let arg = args.remove(1);
+        if FILESYSTEM.open(self.get_entry(arg)).is_err() {
+            kprintln!("Error opening {}", arg);
+        } else {
+            self.cwd = self.get_entry(arg);
+        }
+    }
+
     fn ls(&self, mut args: Vec<&str>) {
         let mut display_hidden = false;
         args.remove(0); // Remove the ls command
-        if args.len() > 0  {
+        if args.len() > 0 {
             let arg = args.remove(0);
             if arg == "-a" {
                 display_hidden = true;
@@ -173,7 +188,9 @@ impl Shell {
                             Ok(entries) => {
                                 for entry in entries {
                                     if display_hidden || !entry.metadata().attributes.hidden() {
-                                        kprintln!("{}", entry.name());
+                                        if entry.metadata().attributes.directory() || entry.metadata().attributes.archive(){
+                                            kprintln!("{}", entry.name());
+                                        }
                                     }
                                 }
                             }
@@ -195,7 +212,6 @@ impl Shell {
                 ls_dir(&self.get_entry(arg));
             }
         }
-
     }
 
     // Gets the entries identified by the given path.
@@ -206,7 +222,7 @@ impl Shell {
         for component in path.components() {
             match component {
                 Component::RootDir => curr = PathBuf::from("/"),
-                Component::ParentDir => { curr.pop(); },
+                Component::ParentDir => { curr.pop(); }
                 Component::Normal(entry) => curr.push(entry),
                 _ => (), // Nothing to do for `Prefix` or `CurDir`
             }
@@ -219,6 +235,6 @@ impl Shell {
 /// Starts a shell using `prefix` as the prefix for each line. This function
 /// never returns.
 pub fn shell(prefix: &str) -> ! {
-    let the_shell = Shell::new();
+    let mut the_shell = Shell::new();
     the_shell._shell(prefix)
 }
