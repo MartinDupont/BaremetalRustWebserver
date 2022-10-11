@@ -125,16 +125,12 @@ impl Shell {
     }
 
 
-    fn process_command(&mut self, cmd: Command) -> Option<()> {
-        let arg1 = cmd.path();
+    fn process_command(&mut self, mut cmd: Command) -> Option<()> {
+        let arg1 = cmd.args.remove(0);
         match arg1 {
             "echo" => {
-                let mut count = 0;
                 for arg in cmd.args {
-                    if count > 0 {
-                        kprint!("{} ", arg);
-                    }
-                    count += 1
+                    kprint!("{} ", arg);
                 }
                 kprint!("\n");
             }
@@ -156,12 +152,12 @@ impl Shell {
 
 
     fn cd(&mut self, mut args: Vec<&str>) {
-        if args.len() != 2 {
-            kprintln!("cd takes only 1 argument, but received {}", args.len() - 1);
+        if args.len() != 1 {
+            kprintln!("cd takes only 1 argument, but received {}", args.len());
             return;
         }
 
-        let arg = args.remove(1);
+        let arg = args.remove(0);
         match FILESYSTEM.open(self.get_entry(arg)) {
             Err(_) => kprintln!("Error opening {}", arg),
             Ok(entry) => {
@@ -176,7 +172,6 @@ impl Shell {
 
 
     fn cat(&self, mut args: Vec<&str>) {
-        args.remove(0);
         if args.len() == 0 {
             kprintln!("expected at least one argument");
         }
@@ -213,7 +208,6 @@ impl Shell {
 
     fn ls(&self, mut args: Vec<&str>) {
         let mut display_hidden = false;
-        args.remove(0); // Remove the ls command
         if args.len() > 0 {
             let arg = args.remove(0);
             if arg == "-a" {
