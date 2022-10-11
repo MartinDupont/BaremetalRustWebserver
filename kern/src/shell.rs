@@ -4,7 +4,7 @@ use shim::path::{Path, PathBuf, Component};
 use pi::atags::Atags;
 
 use fat32::traits::FileSystem;
-use fat32::traits::{Dir, Entry};
+use fat32::traits::{Dir, Entry, File};
 
 use crate::console::{kprint, kprintln, CONSOLE};
 use crate::{ALLOCATOR, FILESYSTEM};
@@ -143,6 +143,7 @@ impl Shell {
             }
             "ls" => { self.ls(cmd.args) }
             "cd" => { self.cd(cmd.args) }
+            "cat" => { self.cat(cmd.args) }
             "" => {
                 kprintln!();
             }
@@ -161,10 +162,52 @@ impl Shell {
         }
 
         let arg = args.remove(1);
-        if FILESYSTEM.open(self.get_entry(arg)).is_err() {
-            kprintln!("Error opening {}", arg);
-        } else {
-            self.cwd = self.get_entry(arg);
+        match FILESYSTEM.open(self.get_entry(arg)) {
+            Err(_) => kprintln!("Error opening {}", arg),
+            Ok(entry) => {
+                if entry.is_dir() {
+                    self.cwd = self.get_entry(arg);
+                } else {
+                    kprintln!("{} is not a directory", arg);
+                }
+            }
+        }
+    }
+
+
+    fn cat(&self, mut args: Vec<&str>) {
+        args.remove(0);
+        if args.len() == 0 {
+            kprintln!("expected at least one argument");
+        }
+
+        for arg in args {
+            match FILESYSTEM.open(self.get_entry(arg)) {
+                Ok(entry) => match entry.into_file() {
+                    Some(mut file) => {
+                        let mut file_contents = Vec::new();
+                        for _ in 0..file.size() {
+                            file_contents.push(0);
+                        }
+                        match file.read(file_contents.as_mut_slice()) {
+                            Ok(bytes_read) => {
+                                if bytes_read < file.size() as usize {
+                                    kprintln!("Could only read {} of {} bytes in {}",
+                                            bytes_read, file.size(), arg);
+                                } else {
+                                    match core::str::from_utf8(file_contents.as_slice()) {
+                                        Ok(contents) => kprintln!("{}", contents),
+                                        Err(_) => kprintln!("{} contains non-UTF8 characters", arg),
+                                    }
+                                }
+                            }
+                            Err(_) => kprintln!("Error reading the contents of {}", arg),
+                        }
+                    },
+                    None => kprintln!("{} is a directory", arg),
+                }
+                Err(_) => kprintln!("Error opening {}", arg),
+            }
         }
     }
 
