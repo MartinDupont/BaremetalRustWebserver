@@ -3,7 +3,7 @@
 use alloc::boxed::Box;
 use alloc::string::String;
 use core::alloc::{GlobalAlloc, Layout};
-use core::ffi::c_void;
+use core::ffi::{c_void};
 use core::slice;
 use core::time::Duration;
 
@@ -145,43 +145,52 @@ mod inner {
 pub use inner::USPi;
 
 unsafe fn layout(size: usize) -> Layout {
-    Layout::from_size_align_unchecked(size + core::mem::size_of::<usize>(), 16)
+    Layout::from_size_align_unchecked(size + 16, 16)
 }
 
 #[no_mangle]
-fn malloc(size: u32) -> *mut c_void {
-    // Lab 5 2.B
-    unimplemented!("malloc")
+unsafe fn malloc(size: u32) -> *mut c_void {
+    let layout = unsafe {layout(size as usize)};
+    let pointer = ALLOCATOR.alloc(layout);
+
+    let mut thing: usize = *pointer as usize;
+    thing = layout.size(); // store the size of the allocated variable
+
+    // Return the allocated memory but shifted forward by 16. So, when we free the memory
+    // at that pointer address, we know that we need to walk back by 16 to get the size
+    pointer.add(16) as *mut c_void
 }
 
 #[no_mangle]
-fn free(ptr: *mut c_void) {
-    // Lab 5 2.B
-    unimplemented!("free")
+unsafe fn free(ptr: *mut c_void) {
+    let size_pointer = unsafe {ptr.sub(16)};
+    let size = unsafe { *(size_pointer as *mut usize) };
+    let layout = Layout::from_size_align_unchecked(size, 16);
+    ALLOCATOR.dealloc(size_pointer as *mut u8, layout)
 }
 
 #[no_mangle]
 pub fn TimerSimpleMsDelay(nMilliSeconds: u32) {
-    // Lab 5 2.B
-    unimplemented!("TimerSimpleMsDelay")
+    let time = Duration::from_millis(nMilliSeconds as u64);
+    spin_sleep(time)
 }
 
 #[no_mangle]
 pub fn TimerSimpleusDelay(nMicroSeconds: u32) {
-    // Lab 5 2.B
-    unimplemented!("TimerSimpleusDelay")
+    let time = Duration::from_millis(nMicroSeconds as u64 / 1000);
+    spin_sleep(time)
 }
 
 #[no_mangle]
 pub fn MsDelay(nMilliSeconds: u32) {
-    // Lab 5 2.B
-    unimplemented!("MsDelay")
+    let time = Duration::from_millis(nMilliSeconds as u64);
+    spin_sleep(time)
 }
 
 #[no_mangle]
 pub fn usDelay(nMicroSeconds: u32) {
-    // Lab 5 2.B
-    unimplemented!("usDelay")
+    let time = Duration::from_millis(nMicroSeconds as u64 / 1000);
+    spin_sleep(time)
 }
 
 /// Registers `pHandler` to the kernel's IRQ handler registry.
@@ -199,8 +208,14 @@ pub unsafe fn ConnectInterrupt(nIRQ: u32, pHandler: TInterruptHandler, pParam: *
 /// Writes a log message from USPi using `uspi_trace!` macro.
 #[no_mangle]
 pub unsafe fn DoLogWrite(_pSource: *const u8, _Severity: u32, pMessage: *const u8) {
-    // Lab 5 2.B
-    unimplemented!("DoLogWrite")
+    unsafe {
+        extern "C" {
+            fn strlen(s: *const u8) -> usize;
+        }
+        let len = strlen(pMessage);
+        let pMessage = pMessage as *const u8;
+        uspi_trace!("{:?}", slice::from_raw_parts(pMessage, len as usize + 1))
+    }
 }
 
 #[no_mangle]
@@ -210,8 +225,18 @@ pub fn DebugHexdump(_pBuffer: *const c_void, _nBufLen: u32, _pSource: *const u8)
 
 #[no_mangle]
 pub unsafe fn uspi_assertion_failed(pExpr: *const u8, pFile: *const u8, nLine: u32) {
-    // Lab 5 2.B
-    unimplemented!("uspi_assertion_failed")
+    unsafe {
+        extern "C" {
+            fn strlen(s: *const u8) -> usize;
+        }
+        let len = strlen(pExpr);
+        let pExpr = pExpr as *const u8;
+        uspi_trace!("{}, {:?}", nLine,  slice::from_raw_parts(pExpr, len as usize + 1));
+
+        let len2 = strlen(pFile);
+        let pFile = pFile as *const u8;
+        uspi_trace!("{}, {:?}", nLine,  slice::from_raw_parts(pFile, len2 as usize + 1));
+    }
 }
 
 pub struct Usb(pub Mutex<Option<USPi>>);
