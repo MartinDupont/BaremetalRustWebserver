@@ -30,7 +30,7 @@ pub const USER_MAX_VA: usize = 0xffff_ffff_ffff_ffff;
 
 /// The `tick` time.
 // FIXME: When you're ready, change this to something more reasonable.
-pub const TICK: Duration = Duration::from_secs(2);
+pub const TICK: Duration = Duration::from_millis(100);
 
 // Match this value with `HZ` in `timer.h`
 pub const USPI_TIMER_HZ: usize = 10;

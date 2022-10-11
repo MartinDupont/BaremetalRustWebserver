@@ -3,7 +3,7 @@ use core::time::Duration;
 
 use smoltcp::wire::{IpAddress, IpEndpoint};
 
-use crate::console::{kprint, CONSOLE};
+use crate::console::{kprint, kprintln, CONSOLE};
 use crate::param::USER_IMG_BASE;
 use crate::process::{Process, State};
 use crate::traps::TrapFrame;
@@ -20,6 +20,8 @@ use pi::timer::{current_time, Timer};
 /// parameter: the approximate true elapsed time from when `sleep` was called to
 /// when `sleep` returned.
 pub fn sys_sleep(ms: u32, tf: &mut TrapFrame) {
+    let cpu = aarch64::affinity();
+    kprintln!("Entering sleep on core {}...", cpu);
     let start_time = current_time();
 
     let sleep_fn = Box::new(move |p: &mut Process| {
@@ -27,6 +29,7 @@ pub fn sys_sleep(ms: u32, tf: &mut TrapFrame) {
         if elapsed > ms {
             p.context.x[0] = elapsed as u64;
             p.context.x[7] = 1;
+            kprintln!("Finished sleeping");
             true
         } else {
             false
