@@ -26,6 +26,8 @@ pub const KERN_STACK_BASE: usize = 0x80_000;
 pub const KERN_STACK_ALIGN: usize = PAGE_ALIGN;
 pub const KERN_STACK_SIZE: usize = PAGE_SIZE;
 
+pub const USER_MAX_VA: usize = 0xffff_ffff_ffff_ffff;
+
 /// The `tick` time.
 // FIXME: When you're ready, change this to something more reasonable.
 pub const TICK: Duration = Duration::from_secs(2);

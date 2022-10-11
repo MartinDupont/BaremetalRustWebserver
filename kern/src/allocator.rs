@@ -1,5 +1,5 @@
 mod linked_list;
-mod util;
+pub(crate) mod util;
 
 mod bin;
 mod bump;
