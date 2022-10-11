@@ -61,7 +61,7 @@ struct Shell {
 }
 
 impl Shell {
-pub fn  new() -> Shell {
+    pub fn new() -> Shell {
         Shell { cwd: PathBuf::from("/") }
     }
 
@@ -74,8 +74,8 @@ pub fn  new() -> Shell {
         kprintln!("======================================================================");
         kprintln!();
         'outer: loop {
-        let mut cmd_buf = [0u8; CMD_LEN];
-        let mut arg_buf = [""; ARG_LEN];
+            let mut cmd_buf = [0u8; CMD_LEN];
+            let mut arg_buf = [""; ARG_LEN];
 
             kprint!("{} {}", self.cwd.to_str().unwrap(), prefix);
 
@@ -98,7 +98,10 @@ pub fn  new() -> Shell {
                                 kprintln!("error: too many arguments");
                             }
                             Ok(cmd) => {
-                                self.process_command(cmd);
+                                let result = self.process_command(cmd);
+                                if result.is_none() {
+                                    break 'outer
+                                }
                             }
                         }
                         break 'cmd;
@@ -139,44 +142,41 @@ pub fn  new() -> Shell {
             "ls" => { self.ls(cmd.args) }
             "cd" => { self.cd(cmd.args) }
             "cat" => { self.cat(cmd.args) }
-            "exit" => {
-            return None;
-        }
-        "sleep" => {
-            if cmd.args.len() != 2 {
-                kprintln!("Accepts exactly one argument");
-                return Some(())
-            }
-            let millis = u64::from_str_radix(cmd.args[1], 10);
-            match millis {
-                Err(e) => {
-                    kprintln!("{}", e)
-                },
-                Ok(ms) => {
-                    let duration = Duration::from_millis(ms);
-                    let result = kernel_api::syscall::sleep(duration);
-                    match result {
-                        Err(e) => kprintln!("{:?}", e),
-                        Ok(d) => kprintln!("{}", d.as_millis()),
-                    };
+            "exit" => { return None; }
+            "sleep" => {
+                if cmd.args.len() != 1 {
+                    kprintln!("Accepts exactly one argument");
+                    return Some(());
+                }
+                let millis = u64::from_str_radix(cmd.args[0], 10);
+                match millis {
+                    Err(e) => {
+                        kprintln!("{}", e)
+                    }
+                    Ok(ms) => {
+                        let duration = Duration::from_millis(ms);
+                        let result = kernel_api::syscall::sleep(duration);
+                        match result {
+                            Err(e) => kprintln!("{:?}", e),
+                            Ok(d) => kprintln!("{}", d.as_millis()),
+                        };
+                    }
                 }
             }
-        }
-        "mem" => {
-            let mem = cmd.args[1];
-            let my_int = u64::from_str_radix(mem.trim_start_matches("0x"), 16);
-            match my_int {
-                Ok(mem_address) => {
-                    let value = unsafe { &mut *(mem_address as *mut [u32; 8]) };
-                    kprintln!("{:X?}", value)
-                },
-                Err(e) => {
-                    kprintln!("{}", e)
+            "mem" => {
+                let mem = cmd.args[0];
+                let my_int = u64::from_str_radix(mem.trim_start_matches("0x"), 16);
+                match my_int {
+                    Ok(mem_address) => {
+                        let value = unsafe { &mut *(mem_address as *mut [u32; 8]) };
+                        kprintln!("{:X?}", value)
+                    }
+                    Err(e) => {
+                        kprintln!("{}", e)
+                    }
                 }
-
             }
-        }
-        "" => {
+            "" => {
                 kprintln!();
             }
             _ => {
@@ -234,7 +234,7 @@ pub fn  new() -> Shell {
                             }
                             Err(_) => kprintln!("Error reading the contents of {}", arg),
                         }
-                    },
+                    }
                     None => kprintln!("{} is a directory", arg),
                 }
                 Err(_) => kprintln!("Error opening {}", arg),
@@ -261,7 +261,7 @@ pub fn  new() -> Shell {
                             Ok(entries) => {
                                 for entry in entries {
                                     if display_hidden || !entry.metadata().attributes.hidden() {
-                                        if entry.metadata().attributes.directory() || entry.metadata().attributes.archive(){
+                                        if entry.metadata().attributes.directory() || entry.metadata().attributes.archive() {
                                             kprintln!("{}", entry.name());
                                         }
                                     }
@@ -307,7 +307,7 @@ pub fn  new() -> Shell {
 
 /// Starts a shell using `prefix` as the prefix for each line. This function
 /// never returns.
-pub fn shell(prefix: &str) -> ! {
+pub fn shell(prefix: &str) -> () {
     let mut the_shell = Shell::new();
     the_shell._shell(prefix)
 }
