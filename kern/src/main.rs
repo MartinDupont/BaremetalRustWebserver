@@ -30,6 +30,7 @@ pub mod shell;
 pub mod traps;
 pub mod vm;
 
+use aarch64::{disable_fiq_interrupt, enable_fiq_interrupt};
 use allocator::Allocator;
 use fs::FileSystem;
 use net::uspi::Usb;
@@ -71,6 +72,18 @@ unsafe fn kmain() -> ! {
     FILESYSTEM.initialize();
     VMM.initialize();
     SCHEDULER.initialize();
+
+    enable_fiq_interrupt();
+    USB.initialize();
+    ETHERNET.initialize();
+    assert!(USB.is_eth_available());
+    loop {
+        info!("polling!");
+        if USB.is_eth_link_up() {
+            break
+        }
+    }
+    disable_fiq_interrupt();
 
     init::initialize_app_cores();
 

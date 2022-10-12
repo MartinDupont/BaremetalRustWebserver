@@ -113,8 +113,8 @@ pub struct RxToken {
 
 impl phy::RxToken for RxToken {
     fn consume<R, F>(mut self, _timestamp: Instant, f: F) -> smoltcp::Result<R>
-    where
-        F: FnOnce(&mut [u8]) -> smoltcp::Result<R>,
+        where
+            F: FnOnce(&mut [u8]) -> smoltcp::Result<R>,
     {
         f(self.frame.as_mut_slice())
     }
@@ -124,8 +124,8 @@ pub struct TxToken;
 
 impl phy::TxToken for TxToken {
     fn consume<R, F>(self, _timestamp: Instant, len: usize, f: F) -> smoltcp::Result<R>
-    where
-        F: FnOnce(&mut [u8]) -> smoltcp::Result<R>,
+        where
+            F: FnOnce(&mut [u8]) -> smoltcp::Result<R>,
     {
         let mut frame = Frame::new();
         frame.set_len(len.try_into().unwrap());
@@ -137,8 +137,18 @@ impl phy::TxToken for TxToken {
 
 /// Creates and returns a new ethernet interface using `UsbEthernet` struct.
 pub fn create_interface() -> EthernetInterface<UsbEthernet> {
-    // Lab 5 2.B
-    unimplemented!("create_interface")
+    let device = UsbEthernet;
+    let ethernet_addr = USB.get_eth_addr();
+    let neighbor_cache = NeighborCache::new(BTreeMap::new());
+    let ip_addrs = [
+        IpCidr::new(IpAddress::v4(169, 254, 32, 10), 16),
+        IpCidr::new(IpAddress::v4(127, 0, 0, 1), 8),
+    ];
+    EthernetInterfaceBuilder::new(device)
+        .ethernet_addr(ethernet_addr)
+        .neighbor_cache(neighbor_cache)
+        .ip_addrs(ip_addrs)
+        .finalize()
 }
 
 const PORT_MAP_SIZE: usize = 65536 / 64;
@@ -155,8 +165,11 @@ pub struct EthernetDriver {
 impl EthernetDriver {
     /// Creates a fresh ethernet driver.
     fn new() -> EthernetDriver {
-        // Lab 5 2.B
-        unimplemented!("new")
+        EthernetDriver {
+            ethernet: create_interface(),
+            socket_set: SocketSet::new([]),
+            port_map: [0; PORT_MAP_SIZE],
+        }
     }
 
     /// Polls the ethernet interface.
@@ -270,8 +283,8 @@ impl GlobalEthernetDriver {
     /// Enters a critical region and execute the provided closure with a mutable
     /// reference to the socket.
     pub fn with_socket<F, R>(&self, handle: SocketHandle, f: F) -> R
-    where
-        F: FnOnce(&mut SocketRef<'_, TcpSocket>) -> R,
+        where
+            F: FnOnce(&mut SocketRef<'_, TcpSocket>) -> R,
     {
         let mut guard = self.0.lock();
         let mut socket = guard
@@ -285,8 +298,8 @@ impl GlobalEthernetDriver {
     /// Enters a critical region and execute the provided closure with a mutable
     /// reference to the inner ethernet driver.
     pub fn critical<F, R>(&self, f: F) -> R
-    where
-        F: FnOnce(&mut EthernetDriver) -> R,
+        where
+            F: FnOnce(&mut EthernetDriver) -> R,
     {
         let mut guard = self.0.lock();
         let mut ethernet = guard.as_mut().expect("Uninitialized EthernetDriver");
