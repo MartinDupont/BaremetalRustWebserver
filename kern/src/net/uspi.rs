@@ -14,13 +14,14 @@ use smoltcp::wire::EthernetAddress;
 use crate::mutex::Mutex;
 use crate::net::Frame;
 use crate::traps::irq::IrqHandlerRegistry;
-use crate::ALLOCATOR;
+use crate::{ALLOCATOR, FIQ, GLOBAL_IRQ};
 
 const DEBUG_USPI: bool = false;
+
 pub macro uspi_trace {
-    () => (if DEBUG_USPI { trace!("\n") } ),
-    ($fmt:expr) => (if DEBUG_USPI { trace!(concat!($fmt, "\n")) }),
-    ($fmt:expr, $($arg:tt)*) => (if DEBUG_USPI { trace!(concat!($fmt, "\n"), $($arg)*) })
+() => (if DEBUG_USPI { trace!("\n") } ),
+($fmt:expr) => (if DEBUG_USPI { trace!(concat!($fmt, "\n")) }),
+($fmt:expr, $($arg:tt)*) => (if DEBUG_USPI { trace!(concat!($fmt, "\n"), $($arg)*) })
 }
 
 pub type TKernelTimerHandle = u64;
@@ -68,7 +69,7 @@ mod inner {
         fn TimerGet() -> TKernelTimerHandle;
     }
 
-    impl !Sync for USPi {}
+    impl ! Sync for USPi {}
 
     impl USPi {
         /// The caller should assure that this function is called only once
@@ -150,7 +151,7 @@ unsafe fn layout(size: usize) -> Layout {
 
 #[no_mangle]
 unsafe fn malloc(size: u32) -> *mut c_void {
-    let layout = unsafe {layout(size as usize)};
+    let layout = unsafe { layout(size as usize) };
     let pointer = ALLOCATOR.alloc(layout);
 
     let mut thing: usize = *pointer as usize;
@@ -163,7 +164,7 @@ unsafe fn malloc(size: u32) -> *mut c_void {
 
 #[no_mangle]
 unsafe fn free(ptr: *mut c_void) {
-    let size_pointer = unsafe {ptr.sub(16)};
+    let size_pointer = unsafe { ptr.sub(16) };
     let size = unsafe { *(size_pointer as *mut usize) };
     let layout = Layout::from_size_align_unchecked(size, 16);
     ALLOCATOR.dealloc(size_pointer as *mut u8, layout)
@@ -193,6 +194,12 @@ pub fn usDelay(nMicroSeconds: u32) {
     spin_sleep(time)
 }
 
+struct VoidHandle(*mut c_void);
+
+unsafe impl Send for VoidHandle {}
+
+unsafe impl Sync for VoidHandle {}
+
 /// Registers `pHandler` to the kernel's IRQ handler registry.
 /// When the next time the kernel receives `nIRQ` signal, `pHandler` handler
 /// function should be invoked with `pParam`.
@@ -201,8 +208,20 @@ pub fn usDelay(nMicroSeconds: u32) {
 /// registry. Otherwise, register the handler to the global IRQ interrupt handler.
 #[no_mangle]
 pub unsafe fn ConnectInterrupt(nIRQ: u32, pHandler: TInterruptHandler, pParam: *mut c_void) {
-    // Lab 5 2.B
-    unimplemented!("ConnectInterrupt")
+    let interrupt = Interrupt::from(nIRQ as usize);
+    let param = VoidHandle(pParam);
+    let actual_p_handler = pHandler.expect("The handler should exist");
+
+    if interrupt == Interrupt::Usb {
+        FIQ.register((), Box::new(move |tf| {
+            actual_p_handler(param.0)
+        }));
+    } else if interrupt == Interrupt::Timer3 {
+        GLOBAL_IRQ.register(interrupt, Box::new(move |tf| {
+            let actual_p_handler = pHandler.expect("The handler should exist");
+            actual_p_handler(param.0)
+        }))
+    } else { panic!("interrupt irq number should be either USB or Timer3") }
 }
 
 /// Writes a log message from USPi using `uspi_trace!` macro.

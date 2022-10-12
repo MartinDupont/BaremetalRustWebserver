@@ -101,7 +101,9 @@ impl GlobalScheduler {
     pub fn start(&self) -> ! {
 
         let mut tf = TrapFrame::default();
+        enable_fiq_interrupt();
         self.critical(|scheduler| scheduler.switch_to(&mut tf));
+        disable_fiq_interrupt();
         let core = aarch64::affinity();
         if core == 0 {
             //self.initialize_global_timer_interrupt();

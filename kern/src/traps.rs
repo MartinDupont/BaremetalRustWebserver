@@ -4,6 +4,7 @@ mod syscall;
 
 pub mod irq;
 
+use aarch64::{disable_fiq_interrupt, enable_fiq_interrupt};
 pub use self::frame::TrapFrame;
 
 use pi::interrupt::{Controller, Interrupt};
@@ -11,7 +12,7 @@ use pi::local_interrupt::{LocalController, LocalInterrupt};
 
 use self::syndrome::Syndrome;
 use self::syscall::handle_syscall;
-use crate::percore;
+use crate::{FIQ, percore};
 use crate::traps::irq::IrqHandlerRegistry;
 
 use crate::{GLOBAL_IRQ, shell};
@@ -51,6 +52,7 @@ pub struct Info {
 pub extern "C" fn handle_exception(info: Info, esr: u32, tf: &mut TrapFrame) {
     match info.kind {
         Kind::Irq => {
+            enable_fiq_interrupt();
             if aarch64::affinity() == 0 {
                 // global interrupts
                 let controller = Controller::new();
@@ -70,7 +72,12 @@ pub extern "C" fn handle_exception(info: Info, esr: u32, tf: &mut TrapFrame) {
                     percore::local_irq().invoke(interrupt, tf);
                 }
             }
+            disable_fiq_interrupt();
         }
+        Kind::Fiq => {
+            FIQ.invoke((), tf);
+        }
+
         Kind::Synchronous => {
             let syndrome = Syndrome::from(esr);
             //kprintln!("{:?}", syndrome);
@@ -78,11 +85,13 @@ pub extern "C" fn handle_exception(info: Info, esr: u32, tf: &mut TrapFrame) {
                 Syndrome::Brk(v) => {
                     shell::shell("# ");
                     tf.ELR += 4;
-                },
+                }
                 Syndrome::Svc(v) => {
+                    enable_fiq_interrupt();
                     handle_syscall(v, tf);
-                },
-                _ => {loop{}}
+                    disable_fiq_interrupt();
+                }
+                _ => { loop {} }
             }
         }
         _ => {}

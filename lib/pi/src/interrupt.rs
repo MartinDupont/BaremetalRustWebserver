@@ -62,10 +62,28 @@ struct Registers {
     IRQ0_CLR_EN_2: Volatile<u32>,
 }
 
+
+#[repr(C)]
+#[allow(non_snake_case)]
+struct FiqRegisters {
+    FIQ0_PENDING0: Volatile<u32>,
+    FIQ0_PENDING1: Volatile<u32>,
+    FIQ0_PENDING2: Volatile<u32>,
+    _res_0: Volatile<u32>,
+    FIQ0_SET_EN_0: Volatile<u32>,
+    FIQ0_SET_EN_1: Volatile<u32>,
+    FIQ0_SET_EN_2: Volatile<u32>,
+    _res_1: Volatile<u32>,
+    FIQ0_CLR_EN_0: Volatile<u32>,
+    FIQ0_CLR_EN_1: Volatile<u32>,
+    FIQ0_CLR_EN_2: Volatile<u32>,
+}
+
 /// An interrupt controller. Used to enable and disable interrupts as well as to
 /// check if an interrupt is pending.
 pub struct Controller {
     registers: &'static mut Registers,
+    fiqRegisters: &'static mut FiqRegisters,
 }
 
 impl Controller {
@@ -73,6 +91,7 @@ impl Controller {
     pub fn new() -> Controller {
         Controller {
             registers: unsafe { &mut *(INT_BASE as *mut Registers) },
+            fiqRegisters: unsafe { &mut *((INT_BASE + 0x300) as *mut FiqRegisters) },
         }
     }
 
@@ -108,7 +127,11 @@ impl Controller {
 
     /// Enables the interrupt as FIQ interrupt
     pub fn enable_fiq(&mut self, int: Interrupt) {
-        // Lab 5 2.B
-        unimplemented!("enable_fiq")
+        let irq = int as u32;
+        if irq < 32 {
+            self.fiqRegisters.FIQ0_SET_EN_0.write((1 << irq))
+        } else {
+            self.fiqRegisters.FIQ0_SET_EN_1.write((1 << (irq - 32)))
+        }
     }
 }
