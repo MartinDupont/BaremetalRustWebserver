@@ -34,6 +34,8 @@ mod inner {
     use core::convert::TryInto;
     use core::ptr;
     use core::time::Duration;
+    use core::ffi::{c_void};
+
 
     use super::{TKernelTimerHandle, TKernelTimerHandler};
     use crate::net::Frame;
@@ -41,32 +43,34 @@ mod inner {
 
     #[allow(non_camel_case_types)]
     type c_uint = usize;
+    pub type TNetDeviceSpeed = c_uint;
+
+
+    #[repr(C)]
+    #[derive(Debug)]
+    pub struct CMACAddress {
+        pub m_bValid: bool,
+        pub m_Address: [u8; 6usize],
+    }
+
 
     pub struct USPi(());
 
     extern "C" {
-        /// Returns 0 on failure
-        fn USPiInitialize() -> i32;
-        /// Check if the ethernet controller is available.
-        /// Returns != 0 if available
-        fn USPiEthernetAvailable() -> i32;
-        fn USPiGetMACAddress(Buffer: &mut [u8; 6]);
-        /// Returns != 0 if link is up
-        fn USPiEthernetIsLinkUp() -> i32;
-        /// Returns 0 on failure
-        fn USPiSendFrame(pBuffer: *const u8, nLength: u32) -> i32;
-        /// pBuffer must have size USPI_FRAME_BUFFER_SIZE
-        /// Returns 0 if no frame is available or on failure
-        fn USPiReceiveFrame(pBuffer: *mut u8, pResultLength: *mut u32) -> i32;
-        /// Returns a timer handle (0 on failure)
-        fn TimerStartKernelTimer(
-            pThis: TKernelTimerHandle,
-            nDelay: c_uint, // in HZ units
-            pHandler: TKernelTimerHandler,
-            pParam: *mut core::ffi::c_void,
-            pContext: *mut core::ffi::c_void,
-        ) -> c_uint;
-        fn TimerGet() -> TKernelTimerHandle;
+        //pub fn USPiInitialize() -> bool;
+        pub fn USPiGetMACAddress() -> *const CMACAddress;
+        pub fn USPiIsSendFrameAdvisable() -> bool;
+        pub fn USPiSendFrame(
+            pBuffer: *const u8,
+            nLength: c_uint,
+        ) -> bool;
+        pub fn USPiReceiveFrame(
+            pBuffer: *mut u8,
+            pResultLength: *mut c_uint,
+        ) -> bool;
+        pub fn USPiIsLinkUp() -> bool;
+        pub fn USPiGetLinkSpeed() -> TNetDeviceSpeed;
+        pub fn USPiUpdatePHY() -> bool;
     }
 
     impl ! Sync for USPi {}
@@ -75,32 +79,35 @@ mod inner {
         /// The caller should assure that this function is called only once
         /// during the lifetime of the kernel.
         pub unsafe fn initialize() -> Self {
-            assert!(USPiInitialize() != 0);
+            //assert!(USPiInitialize() != false);
             USPi(())
         }
 
         /// Returns whether ethernet is available on RPi
         pub fn is_eth_available(&mut self) -> bool {
-            unsafe { USPiEthernetAvailable() != 0 }
-        }
+            unsafe { USPiIsLinkUp() != false }
+        } // TODO: Double check!!!!
 
         /// Returns MAC address of RPi
         pub fn get_mac_address(&mut self, buf: &mut [u8; 6]) {
-            unsafe { USPiGetMACAddress(buf) }
+            unsafe {
+                let address = USPiGetMACAddress();
+                buf.copy_from_slice(&(*address).m_Address[..])
+            }
         }
 
         /// Checks whether RPi ethernet link is up or not
         pub fn is_eth_link_up(&mut self) -> bool {
-            unsafe { USPiEthernetIsLinkUp() != 0 }
+            unsafe { USPiIsLinkUp() != false }
         }
 
         /// Sends an ethernet frame using USPiSendFrame
         pub fn send_frame(&mut self, frame: &Frame) -> Option<i32> {
             trace!("Send frame {:?}", frame);
-            let result = unsafe { USPiSendFrame(frame.as_ptr(), frame.len()) };
+            let result = unsafe { USPiSendFrame(frame.as_ptr(), frame.len() as c_uint) };
             match result {
-                0 => None,
-                n => Some(n),
+                false => None,
+                n => Some(0),
             }
         }
 
@@ -109,14 +116,14 @@ mod inner {
             let mut result_len = 0;
             trace!("Recv frame {:?}", frame);
             let result = unsafe { USPiReceiveFrame(frame.as_mut_ptr(), &mut result_len) };
-            frame.set_len(result_len);
+            frame.set_len(result_len as u32);
             match result {
-                0 => None,
-                n => Some(n),
+                false => None,
+                _ => Some(0),
             }
         }
 
-        /// A wrapper function to `TimerStartKernelHandler`.
+/*        /// A wrapper function to `TimerStartKernelHandler`.
         pub fn start_kernel_timer(&mut self, delay: Duration, handler: TKernelTimerHandler) {
             trace!(
                 "Core {}, delay {:?}, handler {:?}",
@@ -139,7 +146,7 @@ mod inner {
                     );
                 }
             }
-        }
+        }*/
     }
 }
 
@@ -315,10 +322,10 @@ impl Usb {
     }
 
     pub fn start_kernel_timer(&self, delay: Duration, handler: TKernelTimerHandler) {
-        self.0
-            .lock()
-            .as_mut()
-            .expect("USB not initialized")
-            .start_kernel_timer(delay, handler)
+        // self.0
+        //     .lock()
+        //     .as_mut()
+        //     .expect("USB not initialized")
+        //     .start_kernel_timer(delay, handler)
     }
 }

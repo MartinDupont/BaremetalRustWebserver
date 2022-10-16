@@ -86,7 +86,7 @@ impl<'a> Device<'a> for UsbEthernet {
 
     fn capabilities(&self) -> DeviceCapabilities {
         let mut capability = DeviceCapabilities::default();
-        capability.max_transmission_unit = MTU as usize;
+        capability.max_transmission_unit = MTU as usize; // TODO> INVESTIGATE THIS
         capability
     }
 

@@ -19,10 +19,10 @@ build:
 	@$(OBJCPY) $(TARGET) build/$(KERN).bin
 
 build-all:
-	@(cd ../ext/uspi/lib; make)
-	cp -f ../ext/uspi/lib/libuspi.a ./.cargo/
-	@(cd ../ext/uspi/env/lib; make)
-	cp -f ../ext/uspi/env/lib/libuspienv.a ./.cargo/
+	# @(cd ../ext/uspi/lib; make)
+	cp -f ../ext/circle/libcircle.a ./.cargo/
+	#@(cd ../ext/uspi/env/lib; make)
+	#cp -f ../ext/uspi/env/lib/libuspienv.a ./.cargo/
 	touch src/main.rs
 	make build
 

@@ -76,7 +76,8 @@ unsafe fn kmain() -> ! {
     enable_fiq_interrupt();
     USB.initialize();
     ETHERNET.initialize();
-    assert!(USB.is_eth_available());
+    info!("MAC address: {}", USB.get_eth_addr());
+    assert!(USB.is_eth_available(), "eth not available");
     loop {
         info!("polling!");
         if USB.is_eth_link_up() {
