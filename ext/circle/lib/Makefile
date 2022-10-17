@@ -18,7 +18,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 
-OBJS	= macaddress.o netdevice.o ethernetlibrary.o  bcm54213.o string.o
+OBJS	= macaddress.o netdevice.o ethernetlibrary.o  bcm54213.o string.o synchronize64.o new.o util.o assert.o
 
 
 

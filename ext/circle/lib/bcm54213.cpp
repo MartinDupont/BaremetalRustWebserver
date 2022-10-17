@@ -32,7 +32,6 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 //
 #include <circle/bcm54213.h>
-#include <circle/bcmpropertytags.h>
 #include <circle/bcm2711int.h>
 #include <circle/memio.h>
 #include <circle/bcm2711.h>
@@ -1028,25 +1027,27 @@ void CBcm54213Device::rx_ring16_int_enable(TGEnetRxRing *ring)
 
 int CBcm54213Device::set_hw_addr(void)
 {
+    /*
 	CBcmPropertyTags Tags;
 	TPropertyTagMACAddress MACAddress;
 	if (!Tags.GetTag (PROPTAG_GET_MAC_ADDRESS, &MACAddress, sizeof MACAddress))
 	{
 		return -1;
-	}
+	}*/
 
-	m_MACAddress.Set (MACAddress.Address);
+    u8 myMAC[6] = { 0xc0, 0xff, 0xee, 0xc0, 0xff, 0xee };
+	m_MACAddress.Set (myMAC);
 
 	CString MACString;
 	m_MACAddress.Format (&MACString);
 	//CLogger::Get ()->Write (FromBcm54213, LogDebug, "MAC address is %s", (const char *) MACString);
 
-	umac_writel(  (MACAddress.Address[0] << 24)
-		    | (MACAddress.Address[1] << 16)
-		    | (MACAddress.Address[2] << 8)
-		    |  MACAddress.Address[3], UMAC_MAC0);
-	umac_writel((  MACAddress.Address[4] << 8)
-		     | MACAddress.Address[5], UMAC_MAC1);
+	umac_writel(  (myMAC[0] << 24)
+		    | (myMAC[1] << 16)
+		    | (myMAC[2] << 8)
+		    |  myMAC[3], UMAC_MAC0);
+	umac_writel((  myMAC[4] << 8)
+		     | myMAC[5], UMAC_MAC1);
 
 	return 0;
 }

@@ -39,7 +39,7 @@ CMACAddress::~CMACAddress (void)
 boolean CMACAddress::operator== (const CMACAddress &rAddress2) const
 {
 	assert (m_bValid);
-	return memcmp (m_Address, rAddress2.Get (), MAC_ADDRESS_SIZE) == 0 ? TRUE : FALSE;
+	return my_memcmp (m_Address, rAddress2.Get (), MAC_ADDRESS_SIZE) == 0 ? TRUE : FALSE;
 }
 
 boolean CMACAddress::operator!= (const CMACAddress &rAddress2) const

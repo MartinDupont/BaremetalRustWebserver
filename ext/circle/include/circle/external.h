@@ -10,4 +10,6 @@ extern "C" {
     // USPi uses USB IRQ 9
     void ConnectInterrupt (unsigned nIRQ, TIRQHandler *pHandler, void *pParam);
 
+    void *malloc (unsigned nSize);		// result must be 4-byte aligned
+    void free (void *pBlock);
 }

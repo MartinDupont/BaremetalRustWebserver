@@ -32,9 +32,7 @@ void *memset (void *pBuffer, int nValue, size_t nLength);
 void *memcpy (void *pDest, const void *pSrc, size_t nLength);
 #define memcpyblk memcpy
 
-void *memmove (void *pDest, const void *pSrc, size_t nLength);
-
-int memcmp (const void *pBuffer1, const void *pBuffer2, size_t nLength);
+int my_memcmp (const void *pBuffer1, const void *pBuffer2, size_t nLength);
 
 size_t strlen (const char *pString);
 

@@ -19,31 +19,9 @@
 //
 #include <circle/util.h>
 
-void *memmove (void *pDest, const void *pSrc, size_t nLength)
-{
-	char *pchDest = (char *) pDest;
-	const char *pchSrc = (const char *) pSrc;
-
-	if (   pchSrc < pchDest
-	    && pchDest < pchSrc + nLength)
-	{
-		pchSrc += nLength;
-		pchDest += nLength;
-
-		while (nLength--)
-		{
-			*--pchDest = *--pchSrc;
-		}
-
-		return pDest;
-	}
-
-	return memcpy (pDest, pSrc, nLength);
-}
-
 #if STDLIB_SUPPORT <= 1
 
-int memcmp (const void *pBuffer1, const void *pBuffer2, size_t nLength)
+int my_memcmp (const void *pBuffer1, const void *pBuffer2, size_t nLength)
 {
 	const unsigned char *p1 = (const unsigned char *) pBuffer1;
 	const unsigned char *p2 = (const unsigned char *) pBuffer2;
