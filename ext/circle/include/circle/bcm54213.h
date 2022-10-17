@@ -28,7 +28,7 @@
 
 #include <circle/netdevice.h>
 #include <circle/macaddress.h>
-#include <circle/timer.h>
+#include <circle/external.h>
 #include <circle/spinlock.h>
 #include <circle/types.h>
 
@@ -172,7 +172,6 @@ private:
 	int phy_read_status(void);
 
 private:
-	CTimer *m_pTimer;
 	CMACAddress m_MACAddress;
 	boolean m_bInterruptConnected;
 

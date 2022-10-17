@@ -38,6 +38,13 @@ impl Timer {
         Duration::from_micros(sec)
     }
 
+    /// Reads the system timer's counter and returns Duration.
+    /// `CLO` and `CHI` together can represent the number of elapsed microseconds.
+    pub fn read_ticks(&self) -> u32 {
+        let clo = self.registers.CLO.read();
+        return clo
+    }
+
     /// Sets up a match in timer 1 to occur `t` duration from now. If
     /// interrupts for timer 1 are enabled and IRQs are unmasked, then a timer
     /// interrupt will be issued in `t` duration.
@@ -60,6 +67,10 @@ impl Timer {
 /// Returns current time.
 pub fn current_time() -> Duration {
     Timer::new().read()
+}
+
+pub fn current_ticks() -> u32 {
+    Timer::new().read_ticks()
 }
 
 /// Spins until `t` duration have passed.

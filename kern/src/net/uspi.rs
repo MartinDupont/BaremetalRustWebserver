@@ -8,7 +8,7 @@ use core::slice;
 use core::time::Duration;
 
 use pi::interrupt::{Controller, Interrupt};
-use pi::timer::spin_sleep;
+use pi::timer::{current_ticks, spin_sleep};
 use smoltcp::wire::EthernetAddress;
 
 use crate::mutex::Mutex;
@@ -28,7 +28,7 @@ pub type TKernelTimerHandle = u64;
 pub type TKernelTimerHandler = Option<
     unsafe extern "C" fn(hTimer: TKernelTimerHandle, pParam: *mut c_void, pContext: *mut c_void),
 >;
-pub type TInterruptHandler = Option<unsafe extern "C" fn(pParam: *mut c_void)>;
+pub type TIRQHandler = Option<unsafe extern "C" fn(pParam: *mut c_void)>;
 
 mod inner {
     use core::convert::TryInto;
@@ -57,7 +57,7 @@ mod inner {
     pub struct USPi(());
 
     extern "C" {
-        //pub fn USPiInitialize() -> bool;
+        pub fn USPiInitialize() -> bool;
         pub fn USPiGetMACAddress() -> *const CMACAddress;
         pub fn USPiIsSendFrameAdvisable() -> bool;
         pub fn USPiSendFrame(
@@ -79,7 +79,7 @@ mod inner {
         /// The caller should assure that this function is called only once
         /// during the lifetime of the kernel.
         pub unsafe fn initialize() -> Self {
-            //assert!(USPiInitialize() != false);
+            assert!(USPiInitialize() != false);
             USPi(())
         }
 
@@ -201,6 +201,11 @@ pub fn usDelay(nMicroSeconds: u32) {
     spin_sleep(time)
 }
 
+#[no_mangle]
+pub fn GetMicrosecondTicks() -> u32 {
+    return current_ticks();
+}
+
 struct VoidHandle(*mut c_void);
 
 unsafe impl Send for VoidHandle {}
@@ -214,7 +219,7 @@ unsafe impl Sync for VoidHandle {}
 /// If `nIRQ == Interrupt::Usb`, register the handler to FIQ interrupt handler
 /// registry. Otherwise, register the handler to the global IRQ interrupt handler.
 #[no_mangle]
-pub unsafe fn ConnectInterrupt(nIRQ: u32, pHandler: TInterruptHandler, pParam: *mut c_void) {
+pub unsafe fn ConnectInterrupt(nIRQ: u32, pHandler: TIRQHandler, pParam: *mut c_void) {
     let interrupt = Interrupt::from(nIRQ as usize);
     let param = VoidHandle(pParam);
     let actual_p_handler = pHandler.expect("The handler should exist");

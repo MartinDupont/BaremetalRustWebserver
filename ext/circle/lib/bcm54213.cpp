@@ -33,12 +33,10 @@
 //
 #include <circle/bcm54213.h>
 #include <circle/bcmpropertytags.h>
-#include <circle/interrupt.h>
 #include <circle/bcm2711int.h>
 #include <circle/memio.h>
 #include <circle/bcm2711.h>
 #include <circle/synchronize.h>
-#include <circle/logger.h>
 #include <circle/string.h>
 #include <circle/util.h>
 #include <circle/macros.h>
@@ -578,12 +576,10 @@ GENET_IO_MACRO(rbuf, GENET_RBUF_OFF);
 static const char FromBcm54213[] = "genet";
 
 CBcm54213Device::CBcm54213Device (void)
-:	m_pTimer (CTimer::Get ()),
-	m_bInterruptConnected (FALSE),
+:	m_bInterruptConnected (FALSE),
 	m_tx_cbs (0),
 	m_rx_cbs (0)
 {
-	assert (m_pTimer != 0);
 }
 
 CBcm54213Device::~CBcm54213Device (void)
@@ -598,8 +594,6 @@ CBcm54213Device::~CBcm54213Device (void)
 
 	if (m_bInterruptConnected)
 	{
-		CInterruptSystem::Get ()->DisconnectIRQ (ARM_IRQ_BCM54213_0);
-		CInterruptSystem::Get ()->DisconnectIRQ (ARM_IRQ_BCM54213_1);
 	}
 
 	if (m_rx_cbs != 0)
@@ -625,9 +619,9 @@ boolean CBcm54213Device::Initialize (void)
 		major = 1;
 	if (major != GENET_V5)
 	{
-		CLogger::Get ()->Write (FromBcm54213, LogError,
+/*		CLogger::Get ()->Write (FromBcm54213, LogError,
 					"GENET version mismatch, got: %d, configured for: %d",
-					(unsigned) major, GENET_V5);
+					(unsigned) major, GENET_V5);*/
 
 		return FALSE;
 	}
@@ -648,7 +642,7 @@ boolean CBcm54213Device::Initialize (void)
 	int ret = set_hw_addr();
 	if (ret)
 	{
-		CLogger::Get ()->Write (FromBcm54213, LogError, "Cannot set MAC address (%d)", ret);
+		//CLogger::Get ()->Write (FromBcm54213, LogError, "Cannot set MAC address (%d)", ret);
 
 		return FALSE;
 	}
@@ -658,7 +652,7 @@ boolean CBcm54213Device::Initialize (void)
 	ret = init_dma();			// reinitialize TDMA and RDMA and SW housekeeping
 	if (ret)
 	{
-		CLogger::Get ()->Write (FromBcm54213, LogError, "Failed to initialize DMA (%d)", ret);
+		//CLogger::Get ()->Write (FromBcm54213, LogError, "Failed to initialize DMA (%d)", ret);
 
 		return FALSE;
 	}
@@ -668,17 +662,15 @@ boolean CBcm54213Device::Initialize (void)
 	hfb_init();
 
 	assert (!m_bInterruptConnected);
-	CInterruptSystem::Get ()->ConnectIRQ (ARM_IRQ_BCM54213_0, InterruptStub0, this);
-	CInterruptSystem::Get ()->ConnectIRQ (ARM_IRQ_BCM54213_1, InterruptStub1, this);
+	ConnectInterrupt(ARM_IRQ_BCM54213_0, InterruptStub0, this);
+	ConnectInterrupt(ARM_IRQ_BCM54213_1, InterruptStub1, this);
 	m_bInterruptConnected = TRUE;
 
 	ret = mii_probe();
 	if (ret)
 	{
-		CLogger::Get ()->Write (FromBcm54213, LogError, "Failed to connect to PHY (%d)", ret);
+		//CLogger::Get ()->Write (FromBcm54213, LogError, "Failed to connect to PHY (%d)", ret);
 
-		CInterruptSystem::Get ()->DisconnectIRQ (ARM_IRQ_BCM54213_0);
-		CInterruptSystem::Get ()->DisconnectIRQ (ARM_IRQ_BCM54213_1);
 		m_bInterruptConnected = FALSE;
 
 		return FALSE;
@@ -732,7 +724,7 @@ boolean CBcm54213Device::SendFrame (const void *pBuffer, unsigned nLength)
 
 	if (ring->free_bds < 2)				// is there room for this frame?
 	{
-		CLogger::Get ()->Write (FromBcm54213, LogWarning, "TX frame dropped");
+		//CLogger::Get ()->Write (FromBcm54213, LogWarning, "TX frame dropped");
 
 		m_TxSpinLock.Release ();
 
@@ -817,7 +809,7 @@ boolean CBcm54213Device::ReceiveFrame (void *pBuffer, unsigned *pResultLength)
 		u8 *pRxBuffer = rx_refill (cb);
 		if (pRxBuffer == 0)
 		{
-			CLogger::Get ()->Write (FromBcm54213, LogWarning, "Missing RX buffer!");
+			//CLogger::Get ()->Write (FromBcm54213, LogWarning, "Missing RX buffer!");
 
 			goto out;
 		}
@@ -829,8 +821,7 @@ boolean CBcm54213Device::ReceiveFrame (void *pBuffer, unsigned *pResultLength)
 		if (   !(dma_flag & DMA_EOP)
 		    || !(dma_flag & DMA_SOP))
 		{
-			CLogger::Get ()->Write (FromBcm54213, LogWarning,
-						"Dropping fragmented RX packet!");
+			//CLogger::Get ()->Write (FromBcm54213, LogWarning, "Dropping fragmented RX packet!");
 
 			delete [] pRxBuffer;
 
@@ -840,8 +831,7 @@ boolean CBcm54213Device::ReceiveFrame (void *pBuffer, unsigned *pResultLength)
 		// report errors
 		if (dma_flag & (DMA_RX_CRC_ERROR | DMA_RX_OV | DMA_RX_NO | DMA_RX_LG | DMA_RX_RXER))
 		{
-			CLogger::Get ()->Write (FromBcm54213, LogWarning, "RX error (0x%x)",
-						(unsigned) dma_flag);
+			//CLogger::Get ()->Write (FromBcm54213, LogWarning, "RX error (0x%x)",(unsigned) dma_flag);
 
 			delete [] pRxBuffer;
 
@@ -1049,8 +1039,7 @@ int CBcm54213Device::set_hw_addr(void)
 
 	CString MACString;
 	m_MACAddress.Format (&MACString);
-	CLogger::Get ()->Write (FromBcm54213, LogDebug, "MAC address is %s",
-				(const char *) MACString);
+	//CLogger::Get ()->Write (FromBcm54213, LogDebug, "MAC address is %s", (const char *) MACString);
 
 	umac_writel(  (MACAddress.Address[0] << 24)
 		    | (MACAddress.Address[1] << 16)
@@ -1177,8 +1166,7 @@ int CBcm54213Device::init_dma(void)
 	int ret = init_rx_queues();
 	if (ret)
 	{
-		CLogger::Get ()->Write (FromBcm54213, LogError,
-					"Failed to initialize RX queues (%d)", ret);
+		//CLogger::Get ()->Write (FromBcm54213, LogError, "Failed to initialize RX queues (%d)", ret);
 		free_rx_buffers();
 		delete [] m_rx_cbs;
 		delete [] m_tx_cbs;
@@ -1546,7 +1534,7 @@ void CBcm54213Device::dmadesc_set_length_status(uintptr d, u32 value)
 
 void CBcm54213Device::udelay (unsigned nMicroSeconds)
 {
-	m_pTimer->usDelay (nMicroSeconds);
+	usDelay (nMicroSeconds);
 }
 
 // handle Rx and Tx default queues + other stuff
@@ -1822,12 +1810,11 @@ void CBcm54213Device::mdio_write(int reg, u16 val)
 // but a private function assigned by the GENET bcmmii module.
 void CBcm54213Device::mdio_wait(void)
 {
-	assert (m_pTimer != 0);
-	unsigned nStartTicks = m_pTimer->GetClockTicks ();
+	unsigned nStartTicks = GetMicrosecondTicks ();
 
 	do
 	{
-		if (m_pTimer->GetClockTicks ()-nStartTicks >= CLOCKHZ / 100)
+		if (GetMicrosecondTicks ()-nStartTicks >= 10000)
 		{
 			break;
 		}
@@ -1866,8 +1853,7 @@ int CBcm54213Device::phy_read_status(void)
 		return ctrl1000;
 
 	if (lpagb & LPA_1000MSFAIL) {
-		CLogger::Get ()->Write (FromBcm54213, LogWarning,
-					"Master/Slave resolution failed (0x%X)", ctrl1000);
+		//CLogger::Get ()->Write (FromBcm54213, LogWarning, "Master/Slave resolution failed (0x%X)", ctrl1000);
 		return -1;
 	}
 

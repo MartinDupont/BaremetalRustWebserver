@@ -18,6 +18,7 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 //
 #include <circle/netdevice.h>
+#include <assert.h>
 
 const char *CNetDevice::s_SpeedString[NetDeviceSpeedUnknown] =
 {
