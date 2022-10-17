@@ -41,6 +41,9 @@ const fn bin_index_size(index: usize) -> usize {
 }
 
 pub fn get_bin_for_size(size: usize) -> Result<usize, ()> {
+    if size == 0  {
+        return Err(())
+    };
     for i in 0..BINS_LEN {
         if size <= bin_index_size(i) {
             return Ok(i);

@@ -161,17 +161,15 @@ unsafe fn malloc(size: u32) -> *mut c_void {
     let layout = unsafe { layout(size as usize) };
     let pointer = ALLOCATOR.alloc(layout);
 
-    let mut thing: usize = *pointer as usize;
-    thing = layout.size(); // store the size of the allocated variable
-
+    *(pointer as *mut usize) = layout.size();
     // Return the allocated memory but shifted forward by 16. So, when we free the memory
     // at that pointer address, we know that we need to walk back by 16 to get the size
-    pointer.add(16) as *mut c_void
+    (pointer as usize + 16) as *mut c_void
 }
 
 #[no_mangle]
 unsafe fn free(ptr: *mut c_void) {
-    let size_pointer = unsafe { ptr.sub(16) };
+    let size_pointer = ptr as usize - 16;
     let size = unsafe { *(size_pointer as *mut usize) };
     let layout = Layout::from_size_align_unchecked(size, 16);
     ALLOCATOR.dealloc(size_pointer as *mut u8, layout)
