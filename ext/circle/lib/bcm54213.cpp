@@ -40,6 +40,7 @@
 #include <circle/util.h>
 #include <circle/macros.h>
 #include <assert.h>
+#include <circle/macaddress.h>
 
 #define GENET_V5			5	// the only supported GENET version
 
@@ -661,8 +662,8 @@ boolean CBcm54213Device::Initialize (void)
 	hfb_init();
 
 	assert (!m_bInterruptConnected);
-	ConnectInterrupt(ARM_IRQ_BCM54213_0, InterruptStub0, this);
-	ConnectInterrupt(ARM_IRQ_BCM54213_1, InterruptStub1, this);
+	//ConnectInterrupt(ARM_IRQ_BCM54213_0, InterruptStub0, this);
+	//ConnectInterrupt(ARM_IRQ_BCM54213_1, InterruptStub1, this);
 	m_bInterruptConnected = TRUE;
 
 	ret = mii_probe();
@@ -1056,12 +1057,17 @@ int CBcm54213Device::set_hw_addr(void)
 
 void CBcm54213Device::set_mdf_addr(unsigned char *addr, int *i, int *mc)
 {
+    // DO NOT DELETE THIS. One would think that one could just inline the variable "thing", but they would be wrong.
+    // For completely unknown reasons, inlining this variable causes initialization to fail.
+    // I am unable to investigate further at this time as I'm not a c++ dev, and because this library is being accessed
+    // via rust across a foreign function interface, it fails without any error message and results in undefined behaviour.
+    u32 thing = addr[5];
 	umac_writel(  addr[0] << 8
 		    | addr[1], UMAC_MDF_ADDR + (*i * 4));
 	umac_writel(  addr[2] << 24
 		    | addr[3] << 16
 		    | addr[4] << 8
-		    | addr[5], UMAC_MDF_ADDR + ((*i + 1) * 4));
+		    | thing, UMAC_MDF_ADDR + ((*i + 1) * 4));
 
 	u32 reg = umac_readl(UMAC_MDF_CTRL);
 	reg |= (1 << (MAX_MC_COUNT - *mc));
