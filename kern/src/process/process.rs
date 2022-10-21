@@ -1,22 +1,23 @@
-use alloc::boxed::Box;
-use core::borrow::{Borrow, BorrowMut};
-use alloc::vec::Vec;
-use shim::io;
-use shim::path::Path;
-use core::mem;
 use aarch64;
 use aarch64::SPSR_EL1;
-use fat32::traits::{FileSystem, Entry, File};
-use smoltcp::socket::SocketHandle;
+use fat32::traits::{Entry, File, FileSystem};
+use kernel_api::{OsError, OsResult};
+use shim::io;
 use shim::io::Read;
-use crate::allocator::util::{align_down, align_up};
+use shim::path::Path;
+use smoltcp::socket::SocketHandle;
 
+use alloc::boxed::Box;
+use alloc::vec::Vec;
+use core::borrow::{Borrow, BorrowMut};
+use core::mem;
+
+use crate::allocator::util::{align_down, align_up};
+use crate::FILESYSTEM;
 use crate::param::*;
 use crate::process::{Stack, State};
 use crate::traps::TrapFrame;
 use crate::vm::*;
-use kernel_api::{OsError, OsResult};
-use crate::FILESYSTEM;
 
 /// Type alias for the type of a process ID.
 pub type Id = u64;

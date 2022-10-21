@@ -1,17 +1,17 @@
-pub mod sd;
-
-use alloc::rc::{Rc};
-use core::fmt::{self, Debug};
+pub use fat32::traits;
+use fat32::vfat::{Dir, Entry, File, VFat, VFatHandle};
 use shim::io;
 use shim::newioerr;
 use shim::path::Path;
-use crate::console::kprintln;
 
-pub use fat32::traits;
-use fat32::vfat::{Dir, Entry, File, VFat, VFatHandle};
+use alloc::rc::Rc;
+use core::fmt::{self, Debug};
+
+use crate::mutex::Mutex;
 
 use self::sd::Sd;
-use crate::mutex::Mutex;
+
+pub mod sd;
 
 #[derive(Clone)]
 pub struct PiVFatHandle(Rc<Mutex<VFat<Self>>>);
@@ -59,8 +59,7 @@ impl FileSystem {
     ///
     /// Panics if the underlying disk or file system failed to initialize.
     pub unsafe fn initialize(&self) {
-        use fat32::traits::BlockDevice;
-        let mut sd_device = Sd::new().expect("No SD card found");
+        let sd_device = Sd::new().expect("No SD card found");
 
         let handle = VFat::<PiVFatHandle>::from(sd_device).expect("Could not initialize filesystem from SD device");
         *self.0.lock() = Some(handle);

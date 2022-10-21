@@ -1,31 +1,26 @@
-use alloc::boxed::Box;
-use alloc::collections::vec_deque::VecDeque;
-use core::borrow::BorrowMut;
-use core::{fmt, mem};
-use pi::timer::tick_in;
-use alloc::vec::Vec;
-
-use core::ffi::c_void;
-use core::time::Duration;
-
 use aarch64::*;
-use pi::interrupt::{Controller, Interrupt};
 use pi::armlocal::ArmLocalController;
+use pi::interrupt::{Controller, Interrupt};
 use pi::local_interrupt::{LocalController, LocalInterrupt};
 use smoltcp::time::Instant;
 
+use alloc::boxed::Box;
+use alloc::collections::vec_deque::VecDeque;
+use core::fmt;
+use core::borrow::BorrowMut;
+use core::ffi::c_void;
+use core::time::Duration;
+
+use crate::{GLOBAL_IRQ, process, shell, VMM};
+use crate::{ETHERNET, USB};
 use crate::mutex::Mutex;
 use crate::net::uspi::TKernelTimerHandle;
 use crate::param::*;
 use crate::percore::{get_preemptive_counter, is_mmu_ready, local_irq};
 use crate::process::{Id, Process, State};
+use crate::SCHEDULER;
 use crate::traps::irq::IrqHandlerRegistry;
 use crate::traps::TrapFrame;
-use crate::{GLOBAL_IRQ, process, shell, VMM};
-use crate::SCHEDULER;
-
-use crate::console::{kprint, kprintln, CONSOLE};
-use crate::{ETHERNET, USB};
 
 /// Process scheduler for the entire machine.
 #[derive(Debug)]
@@ -140,7 +135,7 @@ impl GlobalScheduler {
         registry.register(
             LocalInterrupt::TIMER_IRQ,
             Box::new(|tf| {
-                let id = SCHEDULER.switch(State::Ready, tf);
+                SCHEDULER.switch(State::Ready, tf);
                 let core = aarch64::affinity();
                 let mut controller = LocalController::new(core);
                 controller.tick_in(TICK);
@@ -302,24 +297,5 @@ impl fmt::Debug for Scheduler {
             )?;
         }
         Ok(())
-    }
-}
-
-pub extern "C" fn test_user_process() -> ! {
-    loop {
-        let ms = 10000;
-        let error: u64;
-        let elapsed_ms: u64;
-
-        unsafe {
-            asm!("mov x0, $2
-              svc 1
-              mov $0, x0
-              mov $1, x7"
-                 : "=r"(elapsed_ms), "=r"(error)
-                 : "r"(ms)
-                 : "x0", "x7"
-                 : "volatile");
-        }
     }
 }

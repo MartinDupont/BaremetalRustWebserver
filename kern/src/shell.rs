@@ -1,11 +1,10 @@
-use shim::io;
-use shim::path::{Path, PathBuf, Component};
+use shim::path::{PathBuf, Component};
 
 use fat32::traits::FileSystem;
 use fat32::traits::{Dir, Entry, File};
 
 use crate::console::{kprint, kprintln, CONSOLE};
-use crate::{ALLOCATOR, FILESYSTEM};
+use crate::{FILESYSTEM};
 
 use shim::io::Write;
 use shim::io::Read;
@@ -20,7 +19,6 @@ use core::time::Duration;
 #[derive(Debug)]
 enum Error {
     Empty,
-    TooManyArgs,
 }
 
 /// A structure representing a single shell command.
@@ -29,14 +27,12 @@ struct Command<'a> {
 }
 
 impl<'a> Command<'a> {
-    /// Parse a command from a string `s` using `buf` as storage for the
-    /// arguments.
+    /// Parse a command from a string `s`.
     ///
     /// # Errors
     ///
-    /// If `s` contains no arguments, returns `Error::Empty`. If there are more
-    /// arguments than `buf` can hold, returns `Error::TooManyArgs`.
-    fn parse(s: &'a str, buf: &'a mut [&'a str]) -> Result<Command<'a>, Error> {
+    /// If `s` contains no arguments, returns `Error::Empty`.
+    fn parse(s: &'a str) -> Result<Command<'a>, Error> {
         let mut args = Vec::new();
         for arg in s.split(' ').filter(|a| !a.is_empty()) {
             args.push(arg);
@@ -67,7 +63,6 @@ impl Shell {
 
     fn _shell(&mut self, prefix: &str) -> () {
         const CMD_LEN: usize = 512;
-        const ARG_LEN: usize = 64;
         kprintln!();
         kprintln!("======================================================================");
         kprintln!("                           Welcome to my OS                           ");
@@ -75,7 +70,6 @@ impl Shell {
         kprintln!();
         'outer: loop {
             let mut cmd_buf = [0u8; CMD_LEN];
-            let mut arg_buf = [""; ARG_LEN];
 
             kprint!("{} {}", self.cwd.to_str().unwrap(), prefix);
 
@@ -92,11 +86,8 @@ impl Shell {
                     kprint!("\n");
                     let cmd_result = str::from_utf8(&cmd_buf[0..i]);
                     if let Ok(cmd) = cmd_result {
-                        match Command::parse(cmd, &mut arg_buf) { // enter
+                        match Command::parse(cmd) { // enter
                             Err(Error::Empty) => {}
-                            Err(Error::TooManyArgs) => {
-                                kprintln!("error: too many arguments");
-                            }
                             Ok(cmd) => {
                                 let result = self.process_command(cmd);
                                 if result.is_none() {
@@ -110,7 +101,6 @@ impl Shell {
                         kprint!("\u{7}");
                         kprintln!("");
                         cmd_buf = [0u8; CMD_LEN];
-                        arg_buf = [""; ARG_LEN];
                     }
                 } else if byte == 8 || byte == 127 { // backspace
                     if i > 0 {
@@ -207,7 +197,7 @@ impl Shell {
     }
 
 
-    fn cat(&self, mut args: Vec<&str>) {
+    fn cat(&self, args: Vec<&str>) {
         if args.len() == 0 {
             kprintln!("expected at least one argument");
         }

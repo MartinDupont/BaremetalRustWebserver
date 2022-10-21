@@ -124,7 +124,7 @@ impl PageTable {
         });
         for i in 0..8 {
             let addr = pt.l3[i].as_ptr();
-            let mut entry = &mut pt.l2.entries[i];
+            let entry = &mut pt.l2.entries[i];
             entry.set_masked(addr.as_u64(), RawL2Entry::ADDR);
             entry.set_bit(RawL2Entry::AF);
             entry.set_value(EntrySh::ISh, RawL2Entry::SH);

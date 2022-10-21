@@ -72,7 +72,7 @@ impl LocalAlloc for Allocator {
     /// or `layout` does not meet this allocator's
     /// size or alignment constraints.
     unsafe fn alloc(&mut self, layout: Layout) -> *mut u8 {
-        let mut bin_number = get_bin_for_size(layout.size());
+        let bin_number = get_bin_for_size(layout.size());
         if bin_number.is_err() {
             return core::ptr::null_mut()
         }

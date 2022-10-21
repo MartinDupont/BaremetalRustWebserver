@@ -1,6 +1,4 @@
 use alloc::boxed::Box;
-use core::time::Duration;
-
 use smoltcp::wire::{IpAddress, IpEndpoint};
 
 use crate::console::{kprint, kprintln, CONSOLE};
@@ -10,7 +8,7 @@ use crate::traps::TrapFrame;
 use crate::{ETHERNET, SCHEDULER};
 
 use kernel_api::*;
-use pi::timer::{current_time, Timer};
+use pi::timer::{current_time};
 
 /// Sleep for `ms` milliseconds.
 ///
@@ -265,7 +263,6 @@ pub fn sys_write_str(va: usize, len: usize, tf: &mut TrapFrame) {
 
 
 pub fn handle_syscall(num: u16, tf: &mut TrapFrame) {
-    use crate::console::kprintln;
     match num as usize {
         NR_SLEEP => sys_sleep(tf.x[0] as u32, tf),
         NR_TIME => {

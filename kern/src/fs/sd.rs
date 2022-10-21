@@ -1,13 +1,10 @@
-use core::time::Duration;
+use fat32::traits::BlockDevice;
+use pi::emmc::{EMMCController, SdResult};
 use shim::io;
 use shim::ioerr;
 
 use crate::console::{kprint, kprintln};
 use crate::mutex::Mutex;
-
-use fat32::traits::BlockDevice;
-use pi::emmc::{EMMCController, SdResult};
-
 
 /// A handle to an SD card controller.
 #[derive(Debug)]
@@ -63,7 +60,7 @@ impl BlockDevice for Sd {
             },
             SdResult::EMMC_TIMEOUT => ioerr!(BrokenPipe, "timeout"),
             SdResult::EMMC_ERROR_APP_CMD => ioerr!(TimedOut, "error sending commsnt"),
-            r => ioerr!(Other, "unknown error"),
+            _ => ioerr!(Other, "unknown error"),
         }
     }
 

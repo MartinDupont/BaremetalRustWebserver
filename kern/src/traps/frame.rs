@@ -1,7 +1,7 @@
-use core::fmt;
 
 #[repr(C)]
 #[derive(Default, Copy, Clone, Debug)]
+#[allow(non_snake_case)]
 pub struct TrapFrame {
     pub ELR: u64,   // Exception Link Register
     pub SPSR: u64,  // Saved Program Status Register
