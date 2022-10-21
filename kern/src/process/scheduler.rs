@@ -2,14 +2,11 @@ use aarch64::*;
 use pi::armlocal::ArmLocalController;
 use pi::interrupt::{Controller, Interrupt};
 use pi::local_interrupt::{LocalController, LocalInterrupt};
-use smoltcp::time::Instant;
 
 use alloc::boxed::Box;
 use alloc::collections::vec_deque::VecDeque;
 use core::fmt;
-use core::borrow::BorrowMut;
 use core::ffi::c_void;
-use core::time::Duration;
 
 use crate::{GLOBAL_IRQ, process, shell, VMM};
 use crate::{ETHERNET, USB};

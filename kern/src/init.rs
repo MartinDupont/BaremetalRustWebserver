@@ -2,7 +2,6 @@ use aarch64::*;
 
 use core::mem::zeroed;
 use core::ptr::write_volatile;
-use core::time::Duration;
 
 mod oom;
 mod panic;
@@ -146,7 +145,7 @@ pub unsafe fn initialize_app_cores() {
             // The nop() prevents optimizations. The compiler probably thinks it safe to do a
             // single dereference of *addr because it is not aware of side effects.
             nop();
-            if (*addr == 0) {
+            if *addr == 0 {
                 break;
             }
         }

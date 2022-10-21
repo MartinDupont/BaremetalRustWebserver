@@ -8,11 +8,9 @@ use shim::path::Path;
 use smoltcp::socket::SocketHandle;
 
 use alloc::boxed::Box;
-use alloc::vec::Vec;
-use core::borrow::{Borrow, BorrowMut};
 use core::mem;
 
-use crate::allocator::util::{align_down, align_up};
+use crate::allocator::util::{align_down};
 use crate::FILESYSTEM;
 use crate::param::*;
 use crate::process::{Stack, State};
@@ -73,7 +71,7 @@ impl Process {
         tf.ELR = Self::get_image_base().as_u64();
         tf.SPSR = (SPSR_EL1::M & 0b0000) | SPSR_EL1::F | SPSR_EL1::A | SPSR_EL1::D;
         tf.SP = Self::get_stack_top().as_u64();
-        tf.TTBR0 = crate::VMM.get_baddr().as_u64();
+        tf.TTBR0 = VMM.get_baddr().as_u64();
         tf.TTBR1 = p.vmap.get_baddr().as_u64();
 
         Ok(p)

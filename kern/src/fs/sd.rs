@@ -3,7 +3,7 @@ use pi::emmc::{EMMCController, SdResult};
 use shim::io;
 use shim::ioerr;
 
-use crate::console::{kprint, kprintln};
+use crate::console::{kprintln};
 use crate::mutex::Mutex;
 
 /// A handle to an SD card controller.

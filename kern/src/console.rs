@@ -1,6 +1,5 @@
 use core::fmt;
 use pi::uart::MiniUart;
-use pi::uart::uart_io;
 use shim::io;
 use shim::io::Write;
 use shim::io::Read;
