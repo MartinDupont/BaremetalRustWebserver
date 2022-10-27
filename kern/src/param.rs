@@ -29,7 +29,6 @@ pub const KERN_STACK_SIZE: usize = PAGE_SIZE;
 pub const USER_MAX_VA: usize = 0xffff_ffff_ffff_ffff;
 
 /// The `tick` time.
-// FIXME: When you're ready, change this to something more reasonable.
 pub const TICK: Duration = Duration::from_millis(100);
 
 // Match this value with `HZ` in `timer.h`

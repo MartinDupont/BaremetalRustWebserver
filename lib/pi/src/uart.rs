@@ -28,7 +28,6 @@ enum LsrStatus {
 #[repr(C)]
 #[allow(non_snake_case)]
 struct Registers {
-    // FIXME: Declare the "MU" registers from page 8.
     AUX_MU_IO_REG: Volatile<u8>,
     __r1: [Reserved<u8>; 3],
     AUX_MU_IER_REG: Reserved<u8>,
@@ -78,7 +77,6 @@ impl MiniUart {
             &mut *(MU_REG_BASE as *mut Registers)
         };
 
-        // FIXME: Implement remaining mini UART initialization.
         // set data length to 8
         registers.AUX_MU_LCR_REG.or_mask(0b11);
         registers.AUX_MU_BAUD_REG.write(calculate_baud_multiplier(921600));
@@ -155,8 +153,6 @@ impl MiniUart {
     }
 }
 
-// FIXME: Implement `fmt::Write` for `MiniUart`. A b'\r' byte should be written
-// before writing any b'\n' byte.
 impl fmt::Write for MiniUart {
     fn write_str(&mut self, s: &str) -> fmt::Result {
         for byte in s.as_bytes().iter() {
@@ -173,6 +169,13 @@ pub mod uart_io {
     use super::io;
     pub use super::MiniUart;
     use volatile::prelude::*;
+    // The `io::Read::read()` implementation must respect the read timeout by
+    // waiting at most that time for the _first byte_. It should not wait for
+    // any additional bytes but _should_ read as many bytes as possible. If the
+    // read times out, an error of kind `TimedOut` should be returned.
+    //
+    // The `io::Write::write()` method must write all of the requested bytes
+    // before returning.
 
 
     impl io::Write for MiniUart {
@@ -199,13 +202,4 @@ pub mod uart_io {
             Ok(count)
         }
     }
-    // FIXME: Implement `io::Read` and `io::Write` for `MiniUart`.
-    //
-    // The `io::Read::read()` implementation must respect the read timeout by
-    // waiting at most that time for the _first byte_. It should not wait for
-    // any additional bytes but _should_ read as many bytes as possible. If the
-    // read times out, an error of kind `TimedOut` should be returned.
-    //
-    // The `io::Write::write()` method must write all of the requested bytes
-    // before returning.
 }

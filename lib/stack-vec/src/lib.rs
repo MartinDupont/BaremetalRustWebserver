@@ -188,7 +188,3 @@ impl <'a, T:'a> IntoIterator for &'a StackVec<'a, T> {
         self.storage[0..self.len].into_iter()
     }
 }
-
-
-// FIXME: Implement `Deref`, `DerefMut`, and `IntoIterator` for `StackVec`.
-// FIXME: Implement IntoIterator` for `&StackVec`.

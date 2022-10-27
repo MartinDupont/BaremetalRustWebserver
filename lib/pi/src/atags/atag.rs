@@ -41,7 +41,6 @@ impl Atag {
 
 impl From<&'static raw::Atag> for Atag {
     fn from(atag: &'static raw::Atag) -> Atag {
-        // FIXME: Complete the implementation below.
 
         unsafe {
             match (atag.tag, &atag.kind) {

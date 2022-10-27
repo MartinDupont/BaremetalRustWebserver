@@ -27,3 +27,5 @@ card.
 ## Running.
 The raspberry Pi communicates with the host PC using USB connected to the UART in the Raspberry Pi. This
 can be accomplished by connecting a USB module to GPIO pins 14 and 15. See the course notes for more details. 
+
+Once the Pi is connected and plugged in via USB, you can communicate with it by running `sudo screen /dev/ttyUSB0 921600`.
